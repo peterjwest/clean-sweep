@@ -19,5 +19,12 @@
     "whitespace",
     "files",
     "unicode"
-  ]
+  ],
+  "scripts": {
+    "preinstall": "npx only-allow pnpm"
+  },
+  "dependencies": {
+    "jschardet": "^3.0.0",
+    "lodash": "^4.17.21"
+  }
 }
