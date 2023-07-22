@@ -1,17 +1,15 @@
-const { resolve } = require('path');
-const { readdir, readFile } = require('fs').promises;
-const path = require('path');
-const { detect } = require('jschardet');
-const util = require('util');
-const childProcess = require('child_process');
+import { promises as fs } from 'fs';
+import path from 'path';
+import { detect } from 'jschardet';
+import util from 'util';
+import childProcess from 'child_process';
 
 const exec = util.promisify(childProcess.exec);
-
 
 const IGNORED_PATHS = [
   '.git',
   'node_modules',
-];
+] as const;
 
 const BINARY_EXTENSIONS = [
   '.DS_Store',
@@ -47,46 +45,119 @@ const BINARY_EXTENSIONS = [
   '.sln16',
   '.sn',
   '.sln16_copy_of_original',
-];
+] as const;
 
 const INVALID_TYPES = {
-  uppercaseExtension: "Uppercase file extension",
-  dsStore: "Committed .DS_Store files",
-  malformedEncoding: 'Malformed encoding',
-  unexpectedEncoding: 'Unexpected encoding',
-  carriageReturn: 'Uses carriage returns',
-  carriageReturnOnly: 'Uses carriage returns without line feeds',
-  tab: 'Uses tabs',
-  trailingWhitespace: 'Has trailing whitespace',
-  multipleFinalNewlines: 'Has multiple final newlines',
-  noFinalNewline: 'Does not have a final newline',
-  oddIndentation: 'Has odd (uneven) indentation',
-  unexpectedCharacter: 'Has a non-ASCII, non-unicode letter, non-emoji character',
+  DsStore: 'Committed .DS_Store files',
+  UppercaseExtension: 'Uppercase file extension',
+  InvalidByte: 'Invalid byte',
+  UnexpectedContinuationByte: 'Unexpected continuation byte',
+  MissingContinuationByte: 'Missing continuation byte',
+  MalformedEncoding: 'Malformed encoding',
+  UnexpectedEncoding: 'Unexpected encoding',
+  CarriageReturn: 'Uses carriage returns',
+  Tab: 'Uses tabs',
+  TrailingWhitespace: 'Has trailing whitespace',
+  MultipleFinalNewlines: 'Has multiple final newlines',
+  NoFinalNewline: 'Does not have a final newline',
+  UnexpectedCharacter: 'Has a non-ASCII, non-unicode letter, non-emoji character',
+} as const;
+
+interface SomeFailure {
+  type: keyof typeof INVALID_TYPES;
 }
 
-function getLineNumber(text, index) {
-  const match = text.slice(0, index).match(/\r\n|\r|\n/g)
+interface DsStoreFailure extends SomeFailure {
+  type: 'DsStore';
+}
+
+interface UppercaseExtensionFailure extends SomeFailure {
+  type: 'UppercaseExtension';
+}
+
+interface InvalidByteFailure extends SomeFailure {
+  type: 'InvalidByte';
+  value: string;
+  line: number;
+}
+
+interface UnexpectedContinuationByteFailure extends SomeFailure {
+  type: 'UnexpectedContinuationByte';
+  value: string;
+  line: number;
+}
+
+interface MissingContinuationByteFailure extends SomeFailure {
+  type: 'MissingContinuationByte';
+  expectedBytes: number;
+  value: string;
+  line: number;
+}
+
+interface MalformedEncodingFailure extends SomeFailure {
+  type: 'MalformedEncoding';
+  guessedEncoding: string;
+  confidence: number;
+}
+
+interface UnexpectedEncodingFailure extends SomeFailure {
+  type: 'UnexpectedEncoding';
+  encoding: string;
+}
+
+interface CarriageReturnFailure extends SomeFailure {
+  type: 'CarriageReturn';
+  line: number;
+}
+
+interface TabFailure extends SomeFailure {
+  type: 'Tab';
+  line: number;
+}
+
+interface TrailingWhitespaceFailure extends SomeFailure {
+  type: 'TrailingWhitespace';
+  line: number;
+}
+
+interface MultipleFinalNewlinesFailure extends SomeFailure {
+  type: 'MultipleFinalNewlines';
+  line: number;
+}
+
+interface NoFinalNewlineFailure extends SomeFailure {
+  type: 'NoFinalNewline';
+  line: number;
+}
+
+interface UnexpectedCharacterFailure extends SomeFailure {
+  type: 'UnexpectedCharacter';
+  value: string;
+  line: number;
+}
+
+type Failure = (
+  | DsStoreFailure
+  | UppercaseExtensionFailure
+  | InvalidByteFailure
+  | UnexpectedContinuationByteFailure
+  | MissingContinuationByteFailure
+  | MalformedEncodingFailure
+  | UnexpectedEncodingFailure
+  | CarriageReturnFailure
+  | TabFailure
+  | TrailingWhitespaceFailure
+  | MultipleFinalNewlinesFailure
+  | NoFinalNewlineFailure
+  | UnexpectedCharacterFailure
+);
+
+function getLineNumber(text: string, index: number): number {
+  const match = text.slice(0, index).match(/\r\n|\r|\n/g);
   return (match ? match.length : 0) + 1;
 }
 
-function getLineNumber2(text, index) {
-  let line = 1;
-  for (let i = 0; i < index; i++) {
-    if (text[i] === '\n') {
-      line++;
-    }
-    if (text[i] === '\r') {
-      // A line feed after a carriage return counts as part of the same newline
-      if (text[i + 1] === '\n') {
-        i++;
-      }
-      line++;
-    }
-  }
-  return line;
-}
-
-function getLineBufferNumber(buffer, index) {
+function getLineBufferNumber(buffer: Buffer, index: number): number {
   let line = 1;
   for (let i = 0; i < index; i++) {
     if (buffer[i] === 0xA) {
@@ -103,85 +174,55 @@ function getLineBufferNumber(buffer, index) {
   return line;
 }
 
-function isContinuationByte(value) {
+function isContinuationByte(value: number): boolean {
   return value >= 0x80 && value <= 0xBF;
 }
 
-function getByteCount(value) {
+function getByteCount(value: number): number {
   if (isLeadingTwoByte(value)) return 2;
   if (isLeadingThreeByte(value)) return 3;
   if (isLeadingFourByte(value)) return 4;
   return 1;
 }
 
-function isLeadingTwoByte(value) {
+function isLeadingTwoByte(value: number): boolean {
   return value >= 0xC2 && value <= 0xDF;
 }
 
-function isLeadingThreeByte(value) {
+function isLeadingThreeByte(value: number): boolean {
   return value >= 0xE0 && value <= 0xEF;
 }
 
-function isLeadingFourByte(value) {
+function isLeadingFourByte(value: number): boolean {
   return value >= 0xF0 && value <= 0xF4;
 }
 
-function isInvalidByte(value) {
+function isInvalidByte(value: number): boolean {
   return value >= 0xF5 || (value >= 0xC0 && value <= 0xC1);
 }
 
-function outputBytes(values) {
+function outputBytes(values: Buffer | number[]): string {
   return Array.from(values).map((value) => `0x${value.toString(16)}`).join(' ');
 }
 
-function getExtension(filename) {
+function getExtension(filename: string): string | undefined {
   const match = path.basename(filename).match(/(\.[^.]+)+$/);
   return match ? match[0] : undefined;
 }
 
-function collectExtensions(files) {
-  const extensions = {};
-  for (const file of files) {
-    const extension = getExtension(file);
-    if (extension) extensions[extension] = (extensions[extension] || 0) + 1;
-  }
-  return extensions;
-}
-
-function splitArray(array, predicate) {
-  let a = [];
-  let b = [];
-  for (let i = 0; i < array.length; i++) {
-    predicate(array[i], i) ? a.push(array[i]) : b.push(array[i]);
-  }
-  return [a, b];
-}
-
-async function getGitFiles(directory) {
-  const data = (await exec('git ls-files --cached --others --exclude-standard', { cwd: directory, maxBuffer: 10 * 1024 * 1024 })).stdout
+async function getGitFiles(directory: string): Promise<string[]> {
+  const options = { cwd: directory, maxBuffer: 10 * 1024 * 1024 };
+  const data = (await exec('git ls-files --cached --others --exclude-standard', options)).stdout;
   return data.trim().split('\n').filter((path) => {
     const parts = path.split('/');
-    return !IGNORED_PATHS.find((ignoredPath) => parts.includes(ignoredPath))
+    return !IGNORED_PATHS.find((ignoredPath) => parts.includes(ignoredPath));
   });
 }
 
-// async function getFiles(directory) {
-//   const entries = (await readdir(directory, { withFileTypes: true }))
-//   .filter((entry) => !IGNORED_PATHS.has(entry.name));
-
-//   const [directoryEntries, fileEntries] = splitArray(entries, (entry) => entry.isDirectory())
-//   let files = fileEntries.map((entry) => resolve(directory, entry.name));
-
-//   for (const entry of directoryEntries) {
-//   files = files.concat(await getFiles(resolve(directory, entry.name)));
-//   }
-//   return files;
-// }
-
-async function main() {
+async function main(): Promise<void> {
   // TODO: Expand up to git directory
   const files = await getGitFiles('./');
-  const failures = {};
+  const failures: Record<string, Failure[]> = {};
 
   const nonBinaryFiles = files.filter((file) => !BINARY_EXTENSIONS.find((extension) => file.endsWith(extension)));
 
@@ -190,32 +231,32 @@ async function main() {
 
     const extension = getExtension(file);
     if (extension === '.DS_Store') {
-      failures[file].push({ type: 'dsStore' });
+      failures[file].push({ type: 'DsStore' });
       continue;
     }
 
     if (extension && extension.match(/[A-Z]/)) {
-      failures[file].push({ type: 'uppercaseExtension' });
+      failures[file].push({ type: 'UppercaseExtension' });
     }
 
-    const data = await readFile(file);
+    const data = await fs.readFile(file);
 
     // TODO: Check for invalid code points or overlong encodings
 
     for (let i = 0; i < data.length; i++) {
       if (isInvalidByte(data[i])) {
         failures[file].push({
-          type: 'invalidByte',
+          type: 'InvalidByte',
           value: outputBytes([data[i]]),
-          line: getLineBufferNumber(data, i)
+          line: getLineBufferNumber(data, i),
         });
       }
 
       if (isContinuationByte(data[i])) {
         failures[file].push({
-          type: 'unexpectedContinuationByte',
+          type: 'UnexpectedContinuationByte',
           value: outputBytes([data[i]]),
-          line: getLineBufferNumber(data, i)
+          line: getLineBufferNumber(data, i),
         });
       }
 
@@ -228,7 +269,7 @@ async function main() {
         }
         else {
           failures[file].push({
-            type: 'missingContinuationByte',
+            type: 'MissingContinuationByte',
             expectedBytes: byteCount,
             value: outputBytes(data.subarray(startIndex, startIndex + 1)),
             line: getLineBufferNumber(data, startIndex),
@@ -243,7 +284,7 @@ async function main() {
         }
         else {
           failures[file].push({
-            type: 'missingContinuationByte',
+            type: 'MissingContinuationByte',
             expectedBytes: byteCount,
             value: outputBytes(data.subarray(startIndex, startIndex + 2)),
             line: getLineBufferNumber(data, startIndex),
@@ -258,7 +299,7 @@ async function main() {
         }
         else {
           failures[file].push({
-            type: 'missingContinuationByte',
+            type: 'MissingContinuationByte',
             expectedBytes: byteCount,
             value: outputBytes(data.subarray(startIndex, startIndex + 3)),
             line: getLineBufferNumber(data, startIndex),
@@ -273,7 +314,7 @@ async function main() {
 
       if (charset.confidence < 0.95) {
         failures[file].push({
-          type: 'malformedEncoding',
+          type: 'MalformedEncoding',
           guessedEncoding: charset.encoding,
           confidence: charset.confidence,
         });
@@ -282,7 +323,7 @@ async function main() {
 
       if (charset.encoding !== 'UTF-8' && charset.encoding !== 'ascii') {
         failures[file].push({
-          type: 'unexpectedEncoding',
+          type: 'UnexpectedEncoding',
           encoding: charset.encoding,
         });
         continue;
@@ -294,18 +335,8 @@ async function main() {
       if (carriageReturn) {
         failures[file] = failures[file].concat(Array.from(carriageReturn).map((match) => {
           return {
-            type: 'carriageReturn',
-            line: getLineBufferNumber(data, match.index),
-          };
-        }));
-      }
-
-      const carriageReturnOnly = content.matchAll(/(\r([^\n]|$))+/g);
-      if (carriageReturnOnly) {
-        failures[file] = failures[file].concat(Array.from(carriageReturnOnly).map((match) => {
-          return {
-            type: 'carriageReturnOnly',
-            line: getLineBufferNumber(data, match.index),
+            type: 'CarriageReturn',
+            line: getLineNumber(content, match.index as number),
           };
         }));
       }
@@ -314,8 +345,8 @@ async function main() {
       if (tab) {
         failures[file] = failures[file].concat(Array.from(tab).map((match) => {
           return {
-            type: 'tab',
-            line: getLineBufferNumber(data, match.index),
+            type: 'Tab',
+            line: getLineNumber(content, match.index as number),
           };
         }));
       }
@@ -324,8 +355,8 @@ async function main() {
       if (trailingWhitespace) {
         failures[file] = failures[file].concat(Array.from(trailingWhitespace).map((match) => {
           return {
-            type: 'trailingWhitespace',
-            line: getLineBufferNumber(data, match.index),
+            type: 'TrailingWhitespace',
+            line: getLineNumber(content, match.index as number),
           };
         }));
       }
@@ -333,36 +364,26 @@ async function main() {
       const multipleFinalNewlines = content.match(/\n\n+$/);
       if (multipleFinalNewlines) {
         failures[file].push({
-          type: 'multipleFinalNewlines',
-          line: getLineBufferNumber(data, multipleFinalNewlines.index),
+          type: 'MultipleFinalNewlines',
+          line: getLineNumber(content, multipleFinalNewlines.index as number),
         });
       }
 
       const noFinalNewline = content.match(/[^\n]$/);
       if (noFinalNewline) {
         failures[file].push({
-          type: 'noFinalNewline',
-          line: getLineBufferNumber(data, noFinalNewline.index),
+          type: 'NoFinalNewline',
+          line: getLineNumber(content, noFinalNewline.index as number),
         });
-      }
-
-      const oddIndentation = content.matchAll(/\n (  )*[^ ]/g);
-      if (oddIndentation) {
-        failures[file] = failures[file].concat(Array.from(oddIndentation).map((match) => {
-          return {
-            type: 'oddIndentation',
-            line: getLineBufferNumber(data, match.index),
-          };
-        }));
       }
 
       const unexpectedCharacter = content.matchAll(/[^\n\t\r\x20-\xFF\p{L}\p{M}\p{Extended_Pictographic}]/ug);
       if (unexpectedCharacter) {
         failures[file] = failures[file].concat(Array.from(unexpectedCharacter).map((match) => {
           return {
-            type: 'unexpectedCharacter',
+            type: 'UnexpectedCharacter',
             value: match[0],
-            line: getLineBufferNumber(data, match.index),
+            line: getLineNumber(content, match.index as number),
           };
         }));
       }
@@ -370,14 +391,14 @@ async function main() {
   }
 
   for (const file in failures) {
-    failures[file].sort((a, b) => (a.line || 0) - (b.line || 0));
+    failures[file].sort((a, b) => ('line' in a ? a.line : 0) - ('line' in b ? b.line : 0));
   }
 
   for (const file in failures) {
     if (failures[file].length) {
       console.log(file);
       for (const failure of failures[file]) {
-        console.log(failure);
+        console.log(INVALID_TYPES[failure.type], failure);
       }
       console.log('');
     }
@@ -385,11 +406,3 @@ async function main() {
 }
 
 main().catch(console.error);
-
-// const initialBuffer = Buffer.from([0x36, 0xC3, 0xE1, 0x80, 0x80, 0xF0, 0x98, 0x85, 0x39]);
-// const string = initialBuffer.toString('utf8')
-// const buffer = Buffer.from(string, 'utf8')
-
-// console.log(Array.from(initialBuffer).map((value) => '0x' + value.toString(16).toUpperCase()));
-// console.log(string);
-// console.log(Array.from(buffer).map((value) => '0x' + value.toString(16).toUpperCase()));

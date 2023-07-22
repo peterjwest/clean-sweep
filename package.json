@@ -2,7 +2,11 @@
   "name": "clean-sweep",
   "version": "0.0.1",
   "description": "Project-wide linting and hygiene",
-  "main": "index.js",
+  "main": "./build/wrapper.cjs",
+  "exports": {
+    "import": "./build/es6/index.js",
+    "require": "./build/wrapper.cjs"
+  },
   "type": "module",
   "engines": {
     "node": ">=14"
@@ -11,6 +15,9 @@
     "type": "git",
     "url": "git+https://github.com/peterjwest/clean-sweep.git"
   },
+  "files": [
+    "/build"
+  ],
   "author": "Peter West",
   "license": "MIT",
   "homepage": "https://github.com/peterjwest/clean-sweep#readme",
@@ -21,10 +28,26 @@
     "unicode"
   ],
   "scripts": {
+    "build": "rm -rf build/code && tsup src/index.ts src/command.ts --format cjs,esm --dts --out-dir build/code",
+    "lint": "eslint .",
+    "test:coverage": "vitest run --coverage",
+    "test:unit": "vitest run",
     "preinstall": "npx only-allow pnpm"
   },
   "dependencies": {
     "jschardet": "^3.0.0",
     "lodash": "^4.17.21"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.22.9",
+    "@babel/eslint-parser": "^7.22.9",
+    "@types/lodash": "^4.14.195",
+    "@types/node": "^20.4.4",
+    "@typescript-eslint/eslint-plugin": "^6.1.0",
+    "@typescript-eslint/parser": "^6.1.0",
+    "eslint": "^8.45.0",
+    "tsup": "^7.1.0",
+    "typescript": "^5.1.6",
+    "vitest": "^0.33.0"
   }
 }
