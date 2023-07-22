@@ -1,0 +1,23 @@
+{
+  "name": "clean-sweep",
+  "version": "0.0.1",
+  "description": "Project-wide linting and hygiene",
+  "main": "index.js",
+  "type": "module",
+  "engines": {
+    "node": ">=14"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/peterjwest/clean-sweep.git"
+  },
+  "author": "Peter West",
+  "license": "MIT",
+  "homepage": "https://github.com/peterjwest/clean-sweep#readme",
+  "keywords": [
+    "linting",
+    "whitespace",
+    "files",
+    "unicode"
+  ]
+}
