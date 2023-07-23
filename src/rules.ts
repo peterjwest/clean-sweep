@@ -1,5 +1,6 @@
 import { createEnum } from './util';
 
+/** All possible rules to be checked */
 export const RULES = createEnum([
   'DS_STORE',
   'UPPERCASE_EXTENSION',

@@ -1,6 +1,7 @@
 import { createEnum } from './util';
 import { Failure } from './failures';
 
+/** Types of UTF8 byte */
 const BYTE_TYPE = createEnum([
   'INVALID',
   'LEADING_FOUR_BYTE',
@@ -12,6 +13,7 @@ const BYTE_TYPE = createEnum([
 
 type ByteType = (typeof BYTE_TYPE)[keyof typeof BYTE_TYPE];
 
+/** Expected number of bytes for each type */
 const BYTE_TYPE_COUNT = {
   INVALID: 1,
   LEADING_FOUR_BYTE: 4,
@@ -21,6 +23,7 @@ const BYTE_TYPE_COUNT = {
   ASCII: 1,
 } as const satisfies { [Property in keyof typeof BYTE_TYPE]: number };
 
+/** Gets the type of a UTF8 byte */
 function getByteType(value: number): ByteType {
   if (value >= 0xF5) return BYTE_TYPE.INVALID;
   if (value >= 0xF0) return BYTE_TYPE.LEADING_FOUR_BYTE;
@@ -31,10 +34,12 @@ function getByteType(value: number): ByteType {
   return BYTE_TYPE.ASCII;
 }
 
-function outputBytes(values: Buffer | number[]): string {
+/** Serialise a list of bytes in hexadecimal */
+function serialiseBytes(values: Buffer | number[]) {
   return Array.from(values).map((value) => `0x${value.toString(16)}`).join(' ');
 }
 
+/** Gets the line number for an index in a buffer */
 function getLineBufferNumber(buffer: Buffer, index: number): number {
   let line = 1;
   for (let i = 0; i < index; i++) {
@@ -62,7 +67,7 @@ export default function validateUtf8(data: Buffer): Failure[] {
     if (type === BYTE_TYPE.INVALID) {
       errors.push({
         type: 'INVALID_BYTE',
-        value: outputBytes([data[i]]),
+        value: serialiseBytes([data[i]]),
         line: getLineBufferNumber(data, i),
       });
     }
@@ -70,7 +75,7 @@ export default function validateUtf8(data: Buffer): Failure[] {
     if (type === BYTE_TYPE.CONTINUATION) {
       errors.push({
         type: 'UNEXPECTED_CONTINUATION_BYTE',
-        value: outputBytes([data[i]]),
+        value: serialiseBytes([data[i]]),
         line: getLineBufferNumber(data, i),
       });
     }
@@ -86,7 +91,7 @@ export default function validateUtf8(data: Buffer): Failure[] {
         errors.push({
           type: 'MISSING_CONTINUATION_BYTE',
           expectedBytes: byteCount,
-          value: outputBytes(data.subarray(startIndex, startIndex + 1)),
+          value: serialiseBytes(data.subarray(startIndex, startIndex + 1)),
           line: getLineBufferNumber(data, startIndex),
         });
         continue;
@@ -101,7 +106,7 @@ export default function validateUtf8(data: Buffer): Failure[] {
         errors.push({
           type: 'MISSING_CONTINUATION_BYTE',
           expectedBytes: byteCount,
-          value: outputBytes(data.subarray(startIndex, startIndex + 2)),
+          value: serialiseBytes(data.subarray(startIndex, startIndex + 2)),
           line: getLineBufferNumber(data, startIndex),
         });
         continue;
@@ -116,7 +121,7 @@ export default function validateUtf8(data: Buffer): Failure[] {
         errors.push({
           type: 'MISSING_CONTINUATION_BYTE',
           expectedBytes: byteCount,
-          value: outputBytes(data.subarray(startIndex, startIndex + 3)),
+          value: serialiseBytes(data.subarray(startIndex, startIndex + 3)),
           line: getLineBufferNumber(data, startIndex),
         });
         continue;

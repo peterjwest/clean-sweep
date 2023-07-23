@@ -14,8 +14,8 @@ npm install clean-sweep
 - Fancy reporting
 - Configuration
 - Documentation
-- Doc blocks
 - Tests
 - Git directory detection
 - Check for invalid unicode code points
 - Autofixing
+- Rename "BINARY_EXTENSIONS"

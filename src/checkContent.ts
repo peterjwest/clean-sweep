@@ -3,11 +3,13 @@ import { detect } from 'jschardet';
 import { RULES } from './rules';
 import { Failure } from './failures';
 
+/** Gets the line number of an index in a string */
 function getLineNumber(text: string, index: number): number {
   const match = text.slice(0, index).match(/\r\n|\r|\n/g);
   return (match ? match.length : 0) + 1;
 }
 
+/** Runs checks on the file content */
 export default function checkContent(data: Buffer): Failure[] {
   let failures: Failure[] = [];
   const charset = detect(data);
@@ -18,6 +20,7 @@ export default function checkContent(data: Buffer): Failure[] {
       guessedEncoding: charset.encoding,
       confidence: charset.confidence,
     });
+    // If we can't determine the encoding, don't analyse any further
     return failures;
   }
 
@@ -26,6 +29,7 @@ export default function checkContent(data: Buffer): Failure[] {
       type: RULES.UNEXPECTED_ENCODING,
       encoding: charset.encoding,
     });
+    // If the encoding isn't UTF8, don't analyse any further
     return failures;
   }
 

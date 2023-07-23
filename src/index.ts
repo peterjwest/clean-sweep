@@ -1,6 +1,6 @@
 import { promises as fs } from 'fs';
 
-import { IGNORED_PATHS, BINARY_EXTENSIONS } from './defaults';
+import { BINARY_EXTENSIONS } from './defaults';
 import { FAILURE_MESSAGES, Failure } from './failures';
 import getProjectFiles from './getProjectFiles';
 import validateUtf8 from './validateUtf8';
@@ -8,7 +8,7 @@ import checkContent from './checkContent';
 import checkFilePath from './checkFilePath';
 
 async function main(): Promise<void> {
-  const files = await getProjectFiles('./', IGNORED_PATHS);
+  const files = await getProjectFiles('./');
   const failures: Record<string, Failure[]> = {};
 
   const nonBinaryFiles = files.filter((file) => !BINARY_EXTENSIONS.find((extension) => file.endsWith(extension)));

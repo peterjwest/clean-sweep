@@ -1,8 +1,4 @@
-export const IGNORED_PATHS = [
-  '.git',
-  'node_modules',
-] as const;
-
+/** Extensions for binary & media files */
 export const BINARY_EXTENSIONS = [
   '.DS_Store',
   '.sln',

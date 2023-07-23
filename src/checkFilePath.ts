@@ -3,11 +3,13 @@ import path from 'path';
 import { RULES } from './rules';
 import { Failure } from './failures';
 
-function getExtension(filename: string): string | undefined {
-  const match = path.basename(filename).match(/(\.[^.]+)+$/);
+/** Gets the extension for a file (including multiple extensions), or undefined if it has no extension */
+function getExtension(filePath: string): string | undefined {
+  const match = path.basename(filePath).match(/(\.[^.]+)+$/);
   return match ? match[0] : undefined;
 }
 
+/** Runs checks on the file path */
 export default function checkFilePath(filePath: string): Failure[] {
   const failures: Failure[] = [];
 

@@ -87,6 +87,7 @@ export type Failure = (
   | UnexpectedCharacterFailure
 );
 
+/** Failure messages for each rule */
 export const FAILURE_MESSAGES = {
   DS_STORE: 'Committed .DS_Store files',
   UPPERCASE_EXTENSION: 'Uppercase file extension',
