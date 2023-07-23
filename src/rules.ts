@@ -4,6 +4,7 @@ import { createEnum } from './util';
 export const RULES = createEnum([
   'DS_STORE',
   'UPPERCASE_EXTENSION',
+  'IGNORED_COMMITTED_FILE',
   'INVALID_BYTE',
   'UNEXPECTED_CONTINUATION_BYTE',
   'MISSING_CONTINUATION_BYTE',

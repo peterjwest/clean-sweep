@@ -10,6 +10,10 @@ interface UppercaseExtensionFailure extends SomeFailure {
   type: 'UPPERCASE_EXTENSION';
 }
 
+interface IgnoredCommittedFileFailure extends SomeFailure {
+  type: 'IGNORED_COMMITTED_FILE';
+}
+
 interface InvalidByteFailure extends SomeFailure {
   type: 'INVALID_BYTE';
   value: string;
@@ -74,6 +78,7 @@ interface UnexpectedCharacterFailure extends SomeFailure {
 export type Failure = (
   | DsStoreFailure
   | UppercaseExtensionFailure
+  | IgnoredCommittedFileFailure
   | InvalidByteFailure
   | UnexpectedContinuationByteFailure
   | MissingContinuationByteFailure
@@ -91,6 +96,7 @@ export type Failure = (
 export const FAILURE_MESSAGES = {
   DS_STORE: 'Committed .DS_Store files',
   UPPERCASE_EXTENSION: 'Uppercase file extension',
+  IGNORED_COMMITTED_FILE: 'Found committed file which should be gitignored',
   INVALID_BYTE: 'Invalid byte',
   UNEXPECTED_CONTINUATION_BYTE: 'Unexpected continuation byte',
   MISSING_CONTINUATION_BYTE: 'Missing continuation byte',

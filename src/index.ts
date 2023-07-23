@@ -2,18 +2,30 @@ import { promises as fs } from 'fs';
 
 import { BINARY_EXTENSIONS } from './defaults';
 import { FAILURE_MESSAGES, Failure } from './failures';
+import { RULES } from './rules';
 import getProjectFiles from './getProjectFiles';
+import getIgnoredCommittedFiles from './getIgnoredCommittedFiles';
 import validateUtf8 from './validateUtf8';
 import checkContent from './checkContent';
 import checkFilePath from './checkFilePath';
 
 async function main(): Promise<void> {
-  const files = await getProjectFiles('./');
+  const directory = './';
+  const files = await getProjectFiles(directory);
   const failures: Record<string, Failure[]> = {};
 
   const nonBinaryFiles = files.filter((file) => !BINARY_EXTENSIONS.find((extension) => file.endsWith(extension)));
 
+  const ignoredFiles = await getIgnoredCommittedFiles(directory);
+  for (const file of ignoredFiles) {
+    failures[file] = [{
+      type: RULES.IGNORED_COMMITTED_FILE,
+    }];
+  }
+
   for (const file of nonBinaryFiles) {
+    failures[file] = failures[file] || [];
+
     failures[file] = failures[file].concat(checkFilePath(file));
 
     const data = await fs.readFile(file);
