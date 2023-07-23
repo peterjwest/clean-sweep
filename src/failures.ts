@@ -33,6 +33,18 @@ interface MissingContinuationByteFailure extends SomeFailure {
   line: number;
 }
 
+interface OverlongByteSequenceFailure extends SomeFailure {
+  type: 'OVERLONG_BYTE_SEQUENCE';
+  value: string;
+  line: number;
+}
+
+interface InvalidCodePointFailure extends SomeFailure {
+  type: 'INVALID_CODE_POINT';
+  value: string;
+  line: number;
+}
+
 interface MalformedEncodingFailure extends SomeFailure {
   type: 'MALFORMED_ENCODING';
   guessedEncoding: string;
@@ -82,6 +94,8 @@ export type Failure = (
   | InvalidByteFailure
   | UnexpectedContinuationByteFailure
   | MissingContinuationByteFailure
+  | OverlongByteSequenceFailure
+  | InvalidCodePointFailure
   | MalformedEncodingFailure
   | UnexpectedEncodingFailure
   | CarriageReturnFailure
@@ -97,9 +111,11 @@ export const FAILURE_MESSAGES = {
   DS_STORE: 'Committed .DS_Store files',
   UPPERCASE_EXTENSION: 'Uppercase file extension',
   IGNORED_COMMITTED_FILE: 'Found committed file which should be gitignored',
-  INVALID_BYTE: 'Invalid byte',
-  UNEXPECTED_CONTINUATION_BYTE: 'Unexpected continuation byte',
-  MISSING_CONTINUATION_BYTE: 'Missing continuation byte',
+  INVALID_BYTE: 'Invalid character byte value',
+  UNEXPECTED_CONTINUATION_BYTE: 'Invalid character: unexpected continuation byte',
+  MISSING_CONTINUATION_BYTE: 'Invalid character: missing continuation byte',
+  OVERLONG_BYTE_SEQUENCE: 'Invalid character: overlong encoding',
+  INVALID_CODE_POINT: 'Invalid character unicode code point',
   MALFORMED_ENCODING: 'Malformed encoding',
   UNEXPECTED_ENCODING: 'Unexpected encoding',
   CARRIAGE_RETURN: 'Uses carriage returns',

@@ -15,7 +15,6 @@ npm install clean-sweep
 - Configuration
 - Documentation
 - Tests
-- Check for invalid unicode code points
 - Autofixing
 - Rename "BINARY_EXTENSIONS"
 - Snippets

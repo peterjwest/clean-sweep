@@ -23,20 +23,105 @@ const BYTE_TYPE_COUNT = {
   ASCII: 1,
 } as const satisfies { [Property in keyof typeof BYTE_TYPE]: number };
 
+/** The offset for each leading byte */
+const LEADING_BYTE_OFFSETS = {
+  1: 0x00,
+  2: 0xC0,
+  3: 0xE0,
+  4: 0xF0,
+} as const;
+
+/** Various invalid code point ranges for normal files */
+const INVALID_CODE_POINT_RANGES = [
+  // Private-use characters
+  [0xE000, 0xF8FF],
+  [0xF0000, 0xFFFFD],
+  [0x100000, 0x10FFFD],
+  // UTF16 Surrogates
+  [0xD800, 0xDFFF],
+  // "Noncharacters"
+  [0xFDD0, 0xFDEF],
+];
+// "Noncharacters" for each plane
+for (let i = 0; i <= 0x10; i++) {
+  INVALID_CODE_POINT_RANGES.push([0xFFFE + 0x10000 * i, 0xFFFF + 0x10000 * i]);
+}
+
+/** UTF8 value ranges (inclusive) which are not allowed because they duplicate code points */
+const OVERLONG_RANGES = [
+  [0xC080, 0xC1BF],
+  [0xE08080, 0xE0A07F],
+  [0xF0808080, 0xF090807F],
+] as const;
+
 /** Gets the type of a UTF8 byte */
 function getByteType(value: number): ByteType {
-  if (value >= 0xF5) return BYTE_TYPE.INVALID;
+  if (value >= 0xF8) return BYTE_TYPE.INVALID;
   if (value >= 0xF0) return BYTE_TYPE.LEADING_FOUR_BYTE;
   if (value >= 0xE0) return BYTE_TYPE.LEADING_THREE_BYTE;
-  if (value >= 0xC2) return BYTE_TYPE.LEADING_TWO_BYTE;
-  if (value >= 0xC0) return BYTE_TYPE.INVALID;
+  if (value >= 0xC0) return BYTE_TYPE.LEADING_TWO_BYTE;
   if (value >= 0x80) return BYTE_TYPE.CONTINUATION;
   return BYTE_TYPE.ASCII;
 }
 
+type ByteSequence = [number] | [number, number] | [number, number, number] | [number, number, number, number];
+
+/** Gets the UTF8 byte sequence for a character */
+function getBytes(data: Buffer, index: number, byteCount: 1 | 2 | 3 | 4): ByteSequence {
+  return Array.from(data.subarray(index, index + byteCount)) as ByteSequence;
+}
+
+/** Combines a byte sequence into a single value */
+function combineBytes(bytes: ByteSequence): number {
+  let value = bytes[0];
+  for (const byte of bytes.slice(1)) {
+    value = (value << 8) + byte;
+  }
+  return value;
+}
+
+/** Gets a unicode code point from a UTF8 byte sequence */
+function getCodePoint(bytes: ByteSequence) {
+  let value = bytes[0] - LEADING_BYTE_OFFSETS[bytes.length];
+  for (const byte of bytes.slice(1)) {
+    value = (value << 6) + byte - 0x80;
+  }
+  return value;
+}
+
 /** Serialise a list of bytes in hexadecimal */
 function serialiseBytes(values: Buffer | number[]) {
-  return Array.from(values).map((value) => `0x${value.toString(16)}`).join(' ');
+  return Array.from(values).map((value) => `0x${value.toString(16).toUpperCase()}`).join(' ');
+}
+
+/** Serialise a code point */
+function serialiseCodePoint(value: number) {
+  return 'U+' + value.toString(16).toUpperCase();
+}
+
+/** Validates a unicode code point, returns an array of failures */
+function validateCodePoint(codePoint: number, lineNumber: number): Failure[] {
+  const failures: Failure[] = [];
+
+  if (codePoint > 0x10FFFF) {
+    failures.push({
+      type: 'INVALID_CODE_POINT',
+      value: serialiseCodePoint(codePoint),
+      line: lineNumber,
+    });
+  }
+
+  for (const [lower, upper] of INVALID_CODE_POINT_RANGES) {
+    if (codePoint >= lower && codePoint <= upper) {
+      failures.push({
+        type: 'INVALID_CODE_POINT',
+        value: serialiseCodePoint(codePoint),
+        line: lineNumber,
+      });
+    }
+  }
+
+  return failures;
 }
 
 /** Gets the line number for an index in a buffer */
@@ -59,25 +144,27 @@ function getLineBufferNumber(buffer: Buffer, index: number): number {
 
 /** Validates a buffer presumed to contin UTF 8 data, returns an array of failures */
 export default function validateUtf8(data: Buffer): Failure[] {
-  const errors: Failure[] = [];
+  let failures: Failure[] = [];
 
   for (let i = 0; i < data.length; i++) {
     const type = getByteType(data[i]);
 
     if (type === BYTE_TYPE.INVALID) {
-      errors.push({
+      failures.push({
         type: 'INVALID_BYTE',
         value: serialiseBytes([data[i]]),
         line: getLineBufferNumber(data, i),
       });
+      continue;
     }
 
     if (type === BYTE_TYPE.CONTINUATION) {
-      errors.push({
+      failures.push({
         type: 'UNEXPECTED_CONTINUATION_BYTE',
         value: serialiseBytes([data[i]]),
         line: getLineBufferNumber(data, i),
       });
+      continue;
     }
 
     const byteCount = BYTE_TYPE_COUNT[type];
@@ -88,10 +175,10 @@ export default function validateUtf8(data: Buffer): Failure[] {
         i++;
       }
       else {
-        errors.push({
+        failures.push({
           type: 'MISSING_CONTINUATION_BYTE',
           expectedBytes: byteCount,
-          value: serialiseBytes(data.subarray(startIndex, startIndex + 1)),
+          value: serialiseBytes(getBytes(data, startIndex, 1)),
           line: getLineBufferNumber(data, startIndex),
         });
         continue;
@@ -103,10 +190,10 @@ export default function validateUtf8(data: Buffer): Failure[] {
         i++;
       }
       else {
-        errors.push({
+        failures.push({
           type: 'MISSING_CONTINUATION_BYTE',
           expectedBytes: byteCount,
-          value: serialiseBytes(data.subarray(startIndex, startIndex + 2)),
+          value: serialiseBytes(getBytes(data, startIndex, 2)),
           line: getLineBufferNumber(data, startIndex),
         });
         continue;
@@ -118,16 +205,31 @@ export default function validateUtf8(data: Buffer): Failure[] {
         i++;
       }
       else {
-        errors.push({
+        failures.push({
           type: 'MISSING_CONTINUATION_BYTE',
           expectedBytes: byteCount,
-          value: serialiseBytes(data.subarray(startIndex, startIndex + 3)),
+          value: serialiseBytes(getBytes(data, startIndex, 3)),
           line: getLineBufferNumber(data, startIndex),
         });
         continue;
       }
     }
+
+    const bytes = getBytes(data, startIndex, byteCount);
+    const utf8Value = combineBytes(bytes);
+
+    for (const [lower, upper] of OVERLONG_RANGES) {
+      if (utf8Value >= lower && utf8Value <= upper) {
+        failures.push({
+          type: 'OVERLONG_BYTE_SEQUENCE',
+          value: serialiseBytes(bytes),
+          line: getLineBufferNumber(data, startIndex),
+        });
+      }
+    }
+
+    failures = failures.concat(validateCodePoint(getCodePoint(bytes), getLineBufferNumber(data, startIndex)));
   }
 
-  return errors;
+  return failures;
 }
