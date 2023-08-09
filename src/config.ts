@@ -1,5 +1,6 @@
 import { RuleName, RulesetName } from './rules';
 
+/** Helper type for a rule which contains other rules */
 interface RulesetConfig<Type> {
   enabled: boolean;
   exclude: readonly string[];
@@ -13,24 +14,29 @@ export type RuleConfig = {
   exclude: readonly string[];
 }
 
+/** Helper type for a partial config, since user configs can be partially specified  */
 export type PartialConfig<T> = {
   [P in keyof T]?: P extends 'exclude' | 'enabled' ? T[P] : PartialConfigRules<T[P]>;
 };
 
+/** Helper type for partial config rules */
 export type PartialConfigRules<T> = {
   [P in keyof T]?: PartialConfig<T[P]> | boolean;
 };
 
+/** Generic rules dictionary, used for manipulating rules */
 export interface GenericRules {
   [key: string]: GenericRulesetConfig | RuleConfig;
 }
 
+/** Generic ruleset, used for manipulating rules */
 export interface GenericRulesetConfig {
   enabled: boolean;
   exclude: readonly string[];
   rules: GenericRules;
 }
 
+/** Helper type to extend a config with utility functions */
 export type ExtendConfig<T> = {
   [P in keyof T | 'enabledFor' | 'filterFiles']: (
     (P extends keyof T ?
@@ -48,6 +54,7 @@ export type ExtendConfigRules<T> = {
   [P in keyof T]: ExtendConfig<T[P]>;
 };
 
+/** Full configuration type */
 export type Config = RulesetConfig<{
   PATH_VALIDATION: RulesetConfig<{
     DS_STORE: RuleConfig;
@@ -75,6 +82,10 @@ export type Config = RulesetConfig<{
 
 export type UserConfig = PartialConfig<Config>;
 
+/**
+ * Files which are excluded from content checks by default
+ * Either because they are binary, or not usually edited as plaintext
+ */
 const DEFAULT_CONTENT_EXCLUDED = [
   '.DS_Store',
   '*.sln',
@@ -107,6 +118,7 @@ const DEFAULT_CONTENT_EXCLUDED = [
   '*.7zip',
 ] as const;
 
+/** Default full configuration */
 export const DEFAULT_CONFIG: Config = {
   enabled: true,
   exclude: [],
@@ -149,6 +161,6 @@ export const DEFAULT_CONFIG: Config = {
 } as const satisfies GenericRulesetConfig;
 
 export type ExtendedConfig = ExtendConfig<Config>;
-export type PathConfig = ExtendedConfig['rules']['PATH_VALIDATION'];
-export type ContentConfig = ExtendedConfig['rules']['CONTENT_VALIDATION'];
-export type Utf8Config = ContentConfig['rules']['UTF8_VALIDATION'];
+export type ExtendedPathConfig = ExtendedConfig['rules']['PATH_VALIDATION'];
+export type ExtendedContentConfig = ExtendedConfig['rules']['CONTENT_VALIDATION'];
+export type ExtendedUtf8Config = ExtendedContentConfig['rules']['UTF8_VALIDATION'];

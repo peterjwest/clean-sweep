@@ -1,7 +1,7 @@
 import path from 'path';
 
 import { RULES } from './rules';
-import { PathConfig } from './config';
+import { ExtendedPathConfig } from './config';
 import { Failure } from './failures';
 
 /** Gets the extension for a file (including multiple extensions), or undefined if it has no extension */
@@ -10,8 +10,8 @@ function getExtension(filePath: string): string | undefined {
   return match ? match[0] : undefined;
 }
 
-/** Runs checks on the file path */
-export default function checkFilePath(filePath: string, config: PathConfig): Failure[] {
+/** Runs checks on file paths */
+export default function checkFilePath(filePath: string, config: ExtendedPathConfig): Failure[] {
   const failures: Failure[] = [];
   const extension = getExtension(filePath);
 

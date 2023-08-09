@@ -1,7 +1,7 @@
 import { detect } from 'jschardet';
 
 import { RULES } from './rules';
-import { ContentConfig } from './config';
+import { ExtendedContentConfig } from './config';
 import { Failure } from './failures';
 
 /** Gets the line number of an index in a string */
@@ -10,8 +10,8 @@ function getLineNumber(text: string, index: number): number {
   return (match ? match.length : 0) + 1;
 }
 
-/** Runs checks on the file content */
-export default function checkContent(filePath: string, data: Buffer, config: ContentConfig): Failure[] {
+/** Runs checks on file contents */
+export default function checkContent(filePath: string, data: Buffer, config: ExtendedContentConfig): Failure[] {
   let failures: Failure[] = [];
   const charset = detect(data);
 

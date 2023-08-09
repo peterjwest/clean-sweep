@@ -20,6 +20,7 @@ export const RULES = createEnum([
   'UNEXPECTED_CHARACTER',
 ]);
 
+/** All groups of rules */
 export const RULESETS = createEnum([
   'PATH_VALIDATION',
   'CONTENT_VALIDATION',

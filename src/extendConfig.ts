@@ -3,6 +3,11 @@ import lodash from 'lodash';
 import { GenericRulesetConfig, RuleConfig, Config, ExtendConfig, ExtendedConfig } from './config';
 import GitignoreMatcher from './GitignoreMatcher';
 
+/**
+ * Extends a ruleset to include utility functions
+ * @var ruleset - The ruleset config to be extended
+ * @var parentMatcher - The matcher for the parent config, to inherit exclusion rules
+ */
 function extendRuleset(ruleset: GenericRulesetConfig, parentMatcher: GitignoreMatcher): ExtendConfig<GenericRulesetConfig> {
   const matcher = parentMatcher.extend(ruleset.exclude);
 
@@ -18,6 +23,11 @@ function extendRuleset(ruleset: GenericRulesetConfig, parentMatcher: GitignoreMa
   };
 }
 
+/**
+ * Extends a rule to include utility functions
+ * @var rule - The rule config to be extended
+ * @var parentMatcher - The matcher for the parent config, to inherit exclusion rules
+ */
 function extendRules(rule: RuleConfig, parentMatcher: GitignoreMatcher): ExtendConfig<RuleConfig> {
   const matcher = parentMatcher.extend(rule.exclude);
   return {
@@ -27,6 +37,7 @@ function extendRules(rule: RuleConfig, parentMatcher: GitignoreMatcher): ExtendC
   };
 }
 
+/** Extends a config to include utility functions */
 export default function extendConfig(config: Config): ExtendedConfig {
   // Cast here as we transition from generic back to specific rules
   return extendRuleset(config, new GitignoreMatcher([])) as ExtendedConfig;

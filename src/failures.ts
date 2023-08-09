@@ -87,6 +87,7 @@ interface UnexpectedCharacterFailure extends SomeFailure {
   line: number;
 }
 
+/** Union of all possible failures */
 export type Failure = (
   | DsStoreFailure
   | UppercaseExtensionFailure

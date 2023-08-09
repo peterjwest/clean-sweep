@@ -12,9 +12,9 @@ npm install clean-sweep
 
 - CLI
 - Fancy reporting
-- Configuration
 - Documentation
 - Tests
 - Autofixing
 - Snippets
 - Readme badges
+- Ensure it works correctly in subdirectories

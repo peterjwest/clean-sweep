@@ -19,10 +19,8 @@ async function main(): Promise<void> {
   }
 
   const directory = './';
-  const projectFiles = await getProjectFiles(directory);
+  const files = config.filterFiles(await getProjectFiles(directory));
   const failures: Record<string, Failure[]> = {};
-
-  const files = config.filterFiles(projectFiles);
 
   const pathConfig = config.rules.PATH_VALIDATION;
   const ignoreCommittedConfig = pathConfig.rules.IGNORED_COMMITTED_FILE;

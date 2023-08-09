@@ -1,6 +1,6 @@
 import { createEnum } from './util';
 import { Failure } from './failures';
-import { Utf8Config } from './config';
+import { ExtendedUtf8Config } from './config';
 
 /** Types of UTF8 byte */
 const BYTE_TYPE = createEnum([
@@ -12,6 +12,7 @@ const BYTE_TYPE = createEnum([
   'ASCII',
 ]);
 
+/** Union of different byte types */
 type ByteType = (typeof BYTE_TYPE)[keyof typeof BYTE_TYPE];
 
 /** Expected number of bytes for each type */
@@ -143,8 +144,8 @@ function getLineBufferNumber(buffer: Buffer, index: number): number {
   return line;
 }
 
-/** Validates a buffer presumed to contin UTF 8 data, returns an array of failures */
-export default function validateUtf8(filePath: string, data: Buffer, config: Utf8Config): Failure[] {
+/** Validates a buffer presumed to contain UTF 8 data, returns an array of failures */
+export default function validateUtf8(filePath: string, data: Buffer, config: ExtendedUtf8Config): Failure[] {
   let failures: Failure[] = [];
 
   for (let i = 0; i < data.length; i++) {
