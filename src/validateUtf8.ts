@@ -1,5 +1,6 @@
 import { createEnum } from './util';
 import { Failure } from './failures';
+import { Utf8Config } from './config';
 
 /** Types of UTF8 byte */
 const BYTE_TYPE = createEnum([
@@ -32,7 +33,7 @@ const LEADING_BYTE_OFFSETS = {
 } as const;
 
 /** Various invalid code point ranges for normal files */
-const INVALID_CODE_POINT_RANGES = [
+const INVALID_CODE_POINT_RANGES: Array<[number, number]> = [
   // Private-use characters
   [0xE000, 0xF8FF],
   [0xF0000, 0xFFFFD],
@@ -143,27 +144,34 @@ function getLineBufferNumber(buffer: Buffer, index: number): number {
 }
 
 /** Validates a buffer presumed to contin UTF 8 data, returns an array of failures */
-export default function validateUtf8(data: Buffer): Failure[] {
+export default function validateUtf8(filePath: string, data: Buffer, config: Utf8Config): Failure[] {
   let failures: Failure[] = [];
 
   for (let i = 0; i < data.length; i++) {
-    const type = getByteType(data[i]);
+    const byte = data[i] as number;
+    // TODO: Fix this
+    const nextByte = data[i + 1];
+    const type = getByteType(byte);
 
     if (type === BYTE_TYPE.INVALID) {
-      failures.push({
-        type: 'INVALID_BYTE',
-        value: serialiseBytes([data[i]]),
-        line: getLineBufferNumber(data, i),
-      });
+      if (config.rules.INVALID_BYTE.enabledFor(filePath)) {
+        failures.push({
+          type: 'INVALID_BYTE',
+          value: serialiseBytes([byte]),
+          line: getLineBufferNumber(data, i),
+        });
+      }
       continue;
     }
 
     if (type === BYTE_TYPE.CONTINUATION) {
-      failures.push({
-        type: 'UNEXPECTED_CONTINUATION_BYTE',
-        value: serialiseBytes([data[i]]),
-        line: getLineBufferNumber(data, i),
-      });
+      if (config.rules.UNEXPECTED_CONTINUATION_BYTE.enabledFor(filePath)) {
+        failures.push({
+          type: 'UNEXPECTED_CONTINUATION_BYTE',
+          value: serialiseBytes([byte]),
+          line: getLineBufferNumber(data, i),
+        });
+      }
       continue;
     }
 
@@ -171,46 +179,52 @@ export default function validateUtf8(data: Buffer): Failure[] {
     const startIndex = i;
 
     if (byteCount >= 2) {
-      if (data[i + 1] && getByteType(data[i + 1]) === BYTE_TYPE.CONTINUATION) {
+      if (nextByte && getByteType(nextByte) === BYTE_TYPE.CONTINUATION) {
         i++;
       }
       else {
-        failures.push({
-          type: 'MISSING_CONTINUATION_BYTE',
-          expectedBytes: byteCount,
-          value: serialiseBytes(getBytes(data, startIndex, 1)),
-          line: getLineBufferNumber(data, startIndex),
-        });
+        if (config.rules.MISSING_CONTINUATION_BYTE.enabledFor(filePath)) {
+          failures.push({
+            type: 'MISSING_CONTINUATION_BYTE',
+            expectedBytes: byteCount,
+            value: serialiseBytes(getBytes(data, startIndex, 1)),
+            line: getLineBufferNumber(data, startIndex),
+          });
+        }
         continue;
       }
     }
 
     if (byteCount >= 3) {
-      if (data[i + 1] && getByteType(data[i + 1]) === BYTE_TYPE.CONTINUATION) {
+      if (nextByte && getByteType(nextByte) === BYTE_TYPE.CONTINUATION) {
         i++;
       }
       else {
-        failures.push({
-          type: 'MISSING_CONTINUATION_BYTE',
-          expectedBytes: byteCount,
-          value: serialiseBytes(getBytes(data, startIndex, 2)),
-          line: getLineBufferNumber(data, startIndex),
-        });
+        if (config.rules.MISSING_CONTINUATION_BYTE.enabledFor(filePath)) {
+          failures.push({
+            type: 'MISSING_CONTINUATION_BYTE',
+            expectedBytes: byteCount,
+            value: serialiseBytes(getBytes(data, startIndex, 2)),
+            line: getLineBufferNumber(data, startIndex),
+          });
+        }
         continue;
       }
     }
 
     if (byteCount === 4) {
-      if (data[i + 1] && getByteType(data[i + 1]) === BYTE_TYPE.CONTINUATION) {
+      if (nextByte && getByteType(nextByte) === BYTE_TYPE.CONTINUATION) {
         i++;
       }
       else {
-        failures.push({
-          type: 'MISSING_CONTINUATION_BYTE',
-          expectedBytes: byteCount,
-          value: serialiseBytes(getBytes(data, startIndex, 3)),
-          line: getLineBufferNumber(data, startIndex),
-        });
+        if (config.rules.MISSING_CONTINUATION_BYTE.enabledFor(filePath)) {
+          failures.push({
+            type: 'MISSING_CONTINUATION_BYTE',
+            expectedBytes: byteCount,
+            value: serialiseBytes(getBytes(data, startIndex, 3)),
+            line: getLineBufferNumber(data, startIndex),
+          });
+        }
         continue;
       }
     }
@@ -218,17 +232,21 @@ export default function validateUtf8(data: Buffer): Failure[] {
     const bytes = getBytes(data, startIndex, byteCount);
     const utf8Value = combineBytes(bytes);
 
-    for (const [lower, upper] of OVERLONG_RANGES) {
-      if (utf8Value >= lower && utf8Value <= upper) {
-        failures.push({
-          type: 'OVERLONG_BYTE_SEQUENCE',
-          value: serialiseBytes(bytes),
-          line: getLineBufferNumber(data, startIndex),
-        });
+    if (config.rules.OVERLONG_BYTE_SEQUENCE.enabledFor(filePath)) {
+      for (const [lower, upper] of OVERLONG_RANGES) {
+        if (utf8Value >= lower && utf8Value <= upper) {
+          failures.push({
+            type: 'OVERLONG_BYTE_SEQUENCE',
+            value: serialiseBytes(bytes),
+            line: getLineBufferNumber(data, startIndex),
+          });
+        }
       }
     }
 
-    failures = failures.concat(validateCodePoint(getCodePoint(bytes), getLineBufferNumber(data, startIndex)));
+    if (config.rules.INVALID_CODE_POINT.enabledFor(filePath)) {
+      failures = failures.concat(validateCodePoint(getCodePoint(bytes), getLineBufferNumber(data, startIndex)));
+    }
   }
 
   return failures;

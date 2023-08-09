@@ -20,4 +20,10 @@ export const RULES = createEnum([
   'UNEXPECTED_CHARACTER',
 ]);
 
+export const RULESETS = createEnum([
+  'PATH_VALIDATION',
+  'CONTENT_VALIDATION',
+  'UTF8_VALIDATION',
+]);
+
 export type Rule = keyof typeof RULES;

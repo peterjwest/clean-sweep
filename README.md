@@ -16,6 +16,5 @@ npm install clean-sweep
 - Documentation
 - Tests
 - Autofixing
-- Rename "BINARY_EXTENSIONS"
 - Snippets
 - Readme badges
