@@ -1,9 +1,9 @@
 import lodash from 'lodash';
 
 import { GenericRulesetConfig, RuleConfig, Config, ExtendConfig, ExtendedConfig } from './config';
-import Matcher from './Matcher';
+import GitignoreMatcher from './GitignoreMatcher';
 
-function extendRuleset(ruleset: GenericRulesetConfig, parentMatcher: Matcher): ExtendConfig<GenericRulesetConfig> {
+function extendRuleset(ruleset: GenericRulesetConfig, parentMatcher: GitignoreMatcher): ExtendConfig<GenericRulesetConfig> {
   const matcher = parentMatcher.extend(ruleset.exclude);
 
   const rules = lodash.mapValues(ruleset.rules, (rule) => {
@@ -18,7 +18,7 @@ function extendRuleset(ruleset: GenericRulesetConfig, parentMatcher: Matcher): E
   };
 }
 
-function extendRules(rule: RuleConfig, parentMatcher: Matcher): ExtendConfig<RuleConfig> {
+function extendRules(rule: RuleConfig, parentMatcher: GitignoreMatcher): ExtendConfig<RuleConfig> {
   const matcher = parentMatcher.extend(rule.exclude);
   return {
     ...rule,
@@ -29,5 +29,5 @@ function extendRules(rule: RuleConfig, parentMatcher: Matcher): ExtendConfig<Rul
 
 export default function extendConfig(config: Config): ExtendedConfig {
   // Cast here as we transition from generic back to specific rules
-  return extendRuleset(config, new Matcher([])) as ExtendedConfig;
+  return extendRuleset(config, new GitignoreMatcher([])) as ExtendedConfig;
 }
