@@ -56,19 +56,15 @@ async function main(): Promise<void> {
   }
 
   for (const file in failures) {
-    const fileFailures = failures[file];
-    // TODO: Improve types to remove condition here
-    if (fileFailures) {
-      fileFailures.sort((a, b) => ('line' in a ? a.line : 0) - ('line' in b ? b.line : 0));
-    }
+    // Non-null assertion since we're iterating over keys
+    failures[file]!.sort((a, b) => ('line' in a ? a.line : 0) - ('line' in b ? b.line : 0));
   }
 
   for (const file in failures) {
-    const fileFailures = failures[file];
-    // TODO: Improve types to remove condition here
-    if (fileFailures && fileFailures.length) {
+    // Non-null assertion since we're iterating over keys
+    if (failures[file]!.length) {
       console.log(file);
-      for (const failure of fileFailures) {
+      for (const failure of failures[file]!) {
         console.log(FAILURE_MESSAGES[failure.type], failure);
       }
       console.log('');
