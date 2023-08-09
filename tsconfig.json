@@ -4,7 +4,7 @@
     "lib": ["es2020"],
     "declaration": true,
     "sourceMap": true,
-    "module": "es6",
+    "module": "es2020",
     "experimentalDecorators": true,
     "moduleResolution": "node",
     "noImplicitAny": true,
@@ -13,6 +13,7 @@
     "strictNullChecks": true,
     "strictBindCallApply": true,
     "alwaysStrict": true,
+    "noUncheckedIndexedAccess": true,
     "baseUrl": ".",
     "esModuleInterop": true
   },
