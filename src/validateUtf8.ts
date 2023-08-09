@@ -149,8 +149,6 @@ export default function validateUtf8(filePath: string, data: Buffer, config: Utf
 
   for (let i = 0; i < data.length; i++) {
     const byte = data[i] as number;
-    // TODO: Fix this
-    const nextByte = data[i + 1];
     const type = getByteType(byte);
 
     if (type === BYTE_TYPE.INVALID) {
@@ -179,6 +177,7 @@ export default function validateUtf8(filePath: string, data: Buffer, config: Utf
     const startIndex = i;
 
     if (byteCount >= 2) {
+      const nextByte = data[i + 1];
       if (nextByte && getByteType(nextByte) === BYTE_TYPE.CONTINUATION) {
         i++;
       }
@@ -196,6 +195,7 @@ export default function validateUtf8(filePath: string, data: Buffer, config: Utf
     }
 
     if (byteCount >= 3) {
+      const nextByte = data[i + 1];
       if (nextByte && getByteType(nextByte) === BYTE_TYPE.CONTINUATION) {
         i++;
       }
@@ -213,6 +213,7 @@ export default function validateUtf8(filePath: string, data: Buffer, config: Utf
     }
 
     if (byteCount === 4) {
+      const nextByte = data[i + 1];
       if (nextByte && getByteType(nextByte) === BYTE_TYPE.CONTINUATION) {
         i++;
       }
