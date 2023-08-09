@@ -26,4 +26,5 @@ export const RULESETS = createEnum([
   'UTF8_VALIDATION',
 ]);
 
-export type Rule = keyof typeof RULES;
+export type RuleName = keyof typeof RULES;
+export type RulesetName = keyof typeof RULESETS;

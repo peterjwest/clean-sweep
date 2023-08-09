@@ -1,12 +1,10 @@
-import { RULES, RULESETS } from './rules';
-
-type RuleName = (keyof typeof RULES | keyof typeof RULESETS);
+import { RuleName, RulesetName } from './rules';
 
 interface RulesetConfig<Type> {
   enabled: boolean;
   exclude: readonly string[];
   rules: {
-    [Key in keyof Type]: Key extends RuleName ? Type[Key] : never;
+    [Key in keyof Type]: Key extends RuleName | RulesetName ? Type[Key] : never;
   };
 }
 

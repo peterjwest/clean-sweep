@@ -1,6 +1,6 @@
-import { Rule } from './rules';
+import { RuleName } from './rules';
 
-interface SomeFailure { type: Rule }
+interface SomeFailure { type: RuleName }
 
 interface DsStoreFailure extends SomeFailure {
   type: 'DS_STORE';
@@ -124,4 +124,4 @@ export const FAILURE_MESSAGES = {
   MULTIPLE_FINAL_NEWLINES: 'Has multiple final newlines',
   NO_FINAL_NEWLINE: 'Does not have a final newline',
   UNEXPECTED_CHARACTER: 'Has a non-ASCII, non-unicode letter, non-emoji character',
-} as const satisfies { [Key in Rule]: string };
+} as const satisfies { [Key in RuleName]: string };
