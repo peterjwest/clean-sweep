@@ -1,13 +1,14 @@
+import { ExpandRecursive } from './util';
 import { RuleName, RulesetName } from './rules';
 
 /** Helper type for a rule which contains other rules */
-interface RulesetConfig<Type> {
+type RulesetConfig<Type> = ExpandRecursive<{
   enabled: boolean;
   exclude: readonly string[];
   rules: {
     [Key in keyof Type]: Key extends RuleName | RulesetName ? Type[Key] : never;
   };
-}
+}>
 
 export type RuleConfig = {
   enabled: boolean;
@@ -15,9 +16,9 @@ export type RuleConfig = {
 }
 
 /** Helper type for a partial config, since user configs can be partially specified  */
-export type PartialConfig<T> = {
+export type PartialConfig<T> = ExpandRecursive<{
   [P in keyof T]?: P extends 'exclude' | 'enabled' ? T[P] : PartialConfigRules<T[P]>;
-};
+}>;
 
 /** Helper type for partial config rules */
 export type PartialConfigRules<T> = {
@@ -37,7 +38,7 @@ export interface GenericRulesetConfig {
 }
 
 /** Helper type to extend a config with utility functions */
-export type ExtendConfig<T> = {
+export type ExtendConfig<T> = ExpandRecursive<{
   [P in keyof T | 'enabledFor' | 'filterFiles']: (
     (P extends keyof T ?
       (P extends 'exclude' | 'enabled' ? T[P] :
@@ -48,9 +49,9 @@ export type ExtendConfig<T> = {
       (P extends 'enabledFor' ? (filePath: string) => boolean : (filePaths: string[]) => string[])
     )
   );
-};
+}>;
 
-export type ExtendConfigRules<T> = {
+type ExtendConfigRules<T> = {
   [P in keyof T]: ExtendConfig<T[P]>;
 };
 

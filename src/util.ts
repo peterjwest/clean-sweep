@@ -8,7 +8,13 @@ const exec = promisify(childProcess.exec);
 const GIT_LIST_BUFFER_SIZE = 10 * 1024 * 1024;
 
 /** Expands a named type to show its contents */
-type Expand<Type> = Type extends infer Obj ? { [Key in keyof Obj]: Obj[Key] } : never;
+export type Expand<Type> = Type extends infer Obj ? { [Key in keyof Obj]: Obj[Key] } : never;
+
+/** Expands a named type to show its contents recursively */
+export type ExpandRecursive<Type> = (
+  Type extends (...args: infer Args) => infer Return ? (...args: ExpandRecursive<Args>) => ExpandRecursive<Return> :
+  Type extends object ? (Type extends infer O ? { [K in keyof O]: ExpandRecursive<O[K]> } : never) : Type
+);
 
 /** Takes a string tuple and converts it into an object where the key & value are identical */
 type ObjectFromTuple<Type extends readonly string[]> = {
