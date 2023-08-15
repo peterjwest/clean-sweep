@@ -13,9 +13,11 @@
     "strictNullChecks": true,
     "strictBindCallApply": true,
     "alwaysStrict": true,
+    "strict": true,
     "noUncheckedIndexedAccess": true,
     "baseUrl": ".",
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "resolveJsonModule": true
   },
   "include": [
     "**/*.ts"
