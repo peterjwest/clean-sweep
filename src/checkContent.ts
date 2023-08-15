@@ -1,4 +1,5 @@
 import { detect } from 'jschardet';
+import lodash from 'lodash';
 
 import { RULES } from './rules';
 import { ExtendedContentConfig } from './config';
@@ -65,28 +66,24 @@ export default function checkContent(filePath: string, data: Buffer, config: Ext
   if (config.rules.TAB.enabledFor(filePath)) {
     result.checks++;
 
-    const tab = content.matchAll(/\t+/g);
-    if (tab) {
-      result.addFailures(Array.from(tab).map((match) => {
-        return {
-          type: RULES.TAB,
-          line: getLineNumber(content, match.index as number),
-        };
-      }));
+    const tabs = Array.from(content.matchAll(/\t+/g));
+    if (tabs.length) {
+      result.failures.push({
+        type: RULES.TAB,
+        lines: tabs.map((match) => getLineNumber(content, match.index as number)),
+      });
     }
   }
 
   if (config.rules.TRAILING_WHITESPACE.enabledFor(filePath)) {
     result.checks++;
 
-    const trailingWhitespace = content.matchAll(/ +(\n|$)/g);
-    if (trailingWhitespace) {
-      result.addFailures(Array.from(trailingWhitespace).map((match) => {
-        return {
-          type: RULES.TRAILING_WHITESPACE,
-          line: getLineNumber(content, match.index as number),
-        };
-      }));
+    const trailingWhitespace = Array.from(content.matchAll(/ +(\n|$)/g));
+    if (trailingWhitespace.length) {
+      result.failures.push({
+        type: RULES.TRAILING_WHITESPACE,
+        lines: trailingWhitespace.map((match) => getLineNumber(content, match.index as number)),
+      });
     }
   }
 
@@ -105,7 +102,6 @@ export default function checkContent(filePath: string, data: Buffer, config: Ext
   if (config.rules.NO_FINAL_NEWLINE.enabledFor(filePath)) {
     result.checks++;
 
-
     const noFinalNewline = content.match(/[^\n]$/);
     if (noFinalNewline) {
       result.failures.push({
@@ -118,12 +114,16 @@ export default function checkContent(filePath: string, data: Buffer, config: Ext
   if (config.rules.UNEXPECTED_CHARACTER.enabledFor(filePath)) {
     result.checks++;
 
-    const unexpectedCharacter = content.matchAll(/[^\n\t\r\x20-\xFF\p{L}\p{M}\p{Extended_Pictographic}]/ug);
-    if (unexpectedCharacter) {
-      result.addFailures(Array.from(unexpectedCharacter).map((match) => ({
+    const unexpectedCharacters = Array.from(
+      content.matchAll(/[^\n\t\r\x20-\xFF\p{L}\p{M}\p{Extended_Pictographic}]/ug),
+    );
+    if (unexpectedCharacters.length) {
+      const groupedMatches = Object.values(lodash.groupBy(unexpectedCharacters, (match) => match[0]));
+
+      result.addFailures(groupedMatches.map((matches) => ({
         type: RULES.UNEXPECTED_CHARACTER,
-        value: match[0],
-        line: getLineNumber(content, match.index as number),
+        value: matches[0]![0],
+        lines: matches.map((match) => getLineNumber(content, match.index as number)),
       })));
     }
   }

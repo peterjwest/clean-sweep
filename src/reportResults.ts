@@ -16,7 +16,7 @@ export default function reportResults(results: Results, stats: ResultStats, star
       console.log(chalk.red.bold('×'), file);
       for (const failure of fileData.failures) {
         const getMessage = FAILURE_MESSAGES[failure.type] as (failure: Failure) => string;
-        console.log(`${chalk.red(getMessage(failure))} ${chalk.grey(failure.type)}`);
+        console.log(`${chalk.red(getMessage(failure))} ${chalk.grey('| ' + failure.type)}`);
       }
       console.log('');
     }
