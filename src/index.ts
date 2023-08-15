@@ -98,6 +98,7 @@ export default async function cleanSweep(
 
         // We only want to analyse files which are invalid UTF8
         if (!fileResult.failures.find((failure) => failure.type === RULES.MALFORMED_ENCODING)) {
+          progress.incrementProgress(true);
           continue;
         }
 

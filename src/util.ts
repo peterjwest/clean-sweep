@@ -136,7 +136,7 @@ export function getResultStats(results: Results): ResultStats {
   const checkCount = lodash.sum(fileResults.map((fileData) => fileData.checks));
 
   const filesFailed = failedFileResults.length;
-  const checksFailed = lodash.sum(failedFileResults.map((result) => result.failures.length));
+  const checksFailed = lodash.sum(fileResults.map((fileResult) => Object.values(lodash.groupBy(fileResult.failures, (failure) => failure.type)).length));
 
   return {
     files: {
