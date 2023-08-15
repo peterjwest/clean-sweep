@@ -18,4 +18,3 @@ npm install clean-sweep
 - Parse config with zod
 - Add support for custom allowed characters
 - Fix submodules
-- CI
