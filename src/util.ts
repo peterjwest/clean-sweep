@@ -104,8 +104,50 @@ export class FileResult {
   }
 }
 
+export type Results = Record<string, FileResult>;
+
 /** Gets or creates FileResult for a set of results */
-export function getFileResult(results: Record<string, FileResult>, filePath: string): FileResult {
+export function getFileResult(results: Results, filePath: string): FileResult {
   const fileResult = results[filePath] || new FileResult();
   return results[filePath] = fileResult;
+}
+
+export interface ResultStats {
+  files: {
+    total: number;
+    passed: number;
+    failed: number;
+  };
+  checks: {
+    total: number;
+    passed: number;
+    failed: number;
+  };
+}
+
+/**
+ * Counts failures and totals in Results
+ */
+export function getResultStats(results: Results): ResultStats {
+  const fileResults = Object.values(results);
+  const failedFileResults = Object.values(results).filter((result) => result.failures.length);
+
+  const fileCount = fileResults.length;
+  const checkCount = lodash.sum(fileResults.map((fileData) => fileData.checks));
+
+  const filesFailed = failedFileResults.length;
+  const checksFailed = lodash.sum(failedFileResults.map((result) => result.failures.length));
+
+  return {
+    files: {
+      total: fileCount,
+      passed: fileCount - filesFailed,
+      failed: filesFailed,
+    },
+    checks: {
+      total: checkCount,
+      passed: checkCount - checksFailed,
+      failed: checksFailed,
+    },
+  };
 }

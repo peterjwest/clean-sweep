@@ -3,7 +3,7 @@ import { promises as fs } from 'fs';
 import { join, resolve } from 'path';
 
 import { RULES } from './rules';
-import { getProjectDir, getProjectFiles, getIgnoredCommittedFiles, getFileResult, FileResult } from './util';
+import { getProjectDir, getProjectFiles, getIgnoredCommittedFiles, getFileResult, Results } from './util';
 import validateUtf8 from './validateUtf8';
 import checkContent from './checkContent';
 import checkFilePath from './checkFilePath';
@@ -14,7 +14,7 @@ export default async function cleanSweep(
   progress: ProgressManager,
   userDirectory?: string,
   userConfigPath?: string,
-): Promise<Record<string, FileResult>> {
+): Promise<Results> {
 
   const directory = userDirectory || './';
   const projectDir = await getProjectDir(directory).catch(() => {
@@ -33,7 +33,7 @@ export default async function cleanSweep(
   progress.addSection('Loading project file list');
 
   const files = config.filterFiles(await getProjectFiles(directory));
-  const results: Record<string, FileResult> = {};
+  const results: Results = {};
 
   const pathConfig = config.rules.PATH_VALIDATION;
   const ignoreCommittedConfig = pathConfig.rules.IGNORED_COMMITTED_FILE;
