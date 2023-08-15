@@ -2,12 +2,15 @@
   "name": "clean-sweep",
   "version": "0.0.1",
   "description": "Project-wide linting and hygiene",
+  "type": "module",
   "main": "./build/wrapper.cjs",
   "exports": {
     "import": "./build/es6/index.js",
     "require": "./build/wrapper.cjs"
   },
-  "type": "module",
+  "bin": {
+    "clean-sweep": "./build/code/command.js"
+  },
   "engines": {
     "node": ">=14"
   },
@@ -35,9 +38,11 @@
     "preinstall": "npx only-allow pnpm"
   },
   "dependencies": {
+    "chalk": "^5.3.0",
     "ignore": "^5.2.4",
     "jschardet": "^3.0.0",
     "lodash": "^4.17.21",
+    "multiline-ts": "^3.1.0",
     "zod": "^3.21.4"
   },
   "devDependencies": {

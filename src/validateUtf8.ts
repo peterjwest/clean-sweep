@@ -1,9 +1,11 @@
-import { createEnum } from './util';
+import lodash from 'lodash';
+
+import { createEnumNumeric, delay } from './util';
 import { Failure } from './failures';
 import { ExtendedUtf8Config } from './config';
 
 /** Types of UTF8 byte */
-const BYTE_TYPE = createEnum([
+const BYTE_TYPE = createEnumNumeric([
   'INVALID',
   'LEADING_FOUR_BYTE',
   'LEADING_THREE_BYTE',
@@ -17,13 +19,13 @@ type ByteType = (typeof BYTE_TYPE)[keyof typeof BYTE_TYPE];
 
 /** Expected number of bytes for each type */
 const BYTE_TYPE_COUNT = {
-  INVALID: 1,
-  LEADING_FOUR_BYTE: 4,
-  LEADING_THREE_BYTE: 3,
-  LEADING_TWO_BYTE: 2,
-  CONTINUATION: 1,
-  ASCII: 1,
-} as const satisfies { [Property in keyof typeof BYTE_TYPE]: number };
+  [BYTE_TYPE.INVALID]: 1,
+  [BYTE_TYPE.LEADING_FOUR_BYTE]: 4,
+  [BYTE_TYPE.LEADING_THREE_BYTE]: 3,
+  [BYTE_TYPE.LEADING_TWO_BYTE]: 2,
+  [BYTE_TYPE.CONTINUATION]: 1,
+  [BYTE_TYPE.ASCII]: 1,
+} as const satisfies { [Property in ByteType]: number };
 
 /** The offset for each leading byte */
 const LEADING_BYTE_OFFSETS = {
@@ -145,15 +147,27 @@ function getLineBufferNumber(buffer: Buffer, index: number): number {
 }
 
 /** Validates a buffer presumed to contain UTF 8 data, returns an array of failures */
-export default function validateUtf8(filePath: string, data: Buffer, config: ExtendedUtf8Config): Failure[] {
+export default async function validateUtf8(filePath: string, data: Buffer, config: ExtendedUtf8Config): Promise<Failure[]> {
   let failures: Failure[] = [];
+  let count = 0;
+
+  const isEnabled = lodash.mapValues(config.rules, (rule) => rule.enabledFor(filePath));
 
   for (let i = 0; i < data.length; i++) {
     const byte = data[i] as number;
     const type = getByteType(byte);
 
+    // Allows this process to be interrupted
+    if (count++ % 10000 === 0) {
+      await delay(0);
+    }
+
+    if (type === BYTE_TYPE.ASCII) {
+      continue;
+    }
+
     if (type === BYTE_TYPE.INVALID) {
-      if (config.rules.INVALID_BYTE.enabledFor(filePath)) {
+      if (isEnabled.INVALID_BYTE) {
         failures.push({
           type: 'INVALID_BYTE',
           value: serialiseBytes([byte]),
@@ -164,7 +178,7 @@ export default function validateUtf8(filePath: string, data: Buffer, config: Ext
     }
 
     if (type === BYTE_TYPE.CONTINUATION) {
-      if (config.rules.UNEXPECTED_CONTINUATION_BYTE.enabledFor(filePath)) {
+      if (isEnabled.UNEXPECTED_CONTINUATION_BYTE) {
         failures.push({
           type: 'UNEXPECTED_CONTINUATION_BYTE',
           value: serialiseBytes([byte]),
@@ -201,7 +215,7 @@ export default function validateUtf8(filePath: string, data: Buffer, config: Ext
         i++;
       }
       else {
-        if (config.rules.MISSING_CONTINUATION_BYTE.enabledFor(filePath)) {
+        if (isEnabled.MISSING_CONTINUATION_BYTE) {
           failures.push({
             type: 'MISSING_CONTINUATION_BYTE',
             expectedBytes: byteCount,
@@ -219,7 +233,7 @@ export default function validateUtf8(filePath: string, data: Buffer, config: Ext
         i++;
       }
       else {
-        if (config.rules.MISSING_CONTINUATION_BYTE.enabledFor(filePath)) {
+        if (isEnabled.MISSING_CONTINUATION_BYTE) {
           failures.push({
             type: 'MISSING_CONTINUATION_BYTE',
             expectedBytes: byteCount,
@@ -231,10 +245,10 @@ export default function validateUtf8(filePath: string, data: Buffer, config: Ext
       }
     }
 
-    const bytes = getBytes(data, startIndex, byteCount);
-    const utf8Value = combineBytes(bytes);
+    if (isEnabled.OVERLONG_BYTE_SEQUENCE) {
+      const bytes = getBytes(data, startIndex, byteCount);
+      const utf8Value = combineBytes(bytes);
 
-    if (config.rules.OVERLONG_BYTE_SEQUENCE.enabledFor(filePath)) {
       for (const [lower, upper] of OVERLONG_RANGES) {
         if (utf8Value >= lower && utf8Value <= upper) {
           failures.push({
@@ -246,7 +260,8 @@ export default function validateUtf8(filePath: string, data: Buffer, config: Ext
       }
     }
 
-    if (config.rules.INVALID_CODE_POINT.enabledFor(filePath)) {
+    if (isEnabled.INVALID_CODE_POINT) {
+      const bytes = getBytes(data, startIndex, byteCount);
       failures = failures.concat(validateCodePoint(getCodePoint(bytes), getLineBufferNumber(data, startIndex)));
     }
   }

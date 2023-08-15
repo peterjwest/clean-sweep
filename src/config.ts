@@ -88,6 +88,9 @@ export type UserConfig = PartialConfig<Config>;
  * Either because they are binary, or not usually edited as plaintext
  */
 const DEFAULT_CONTENT_EXCLUDED = [
+  'package-lock.json',
+  'pnpm-lock.yaml',
+  'yarn.lock',
   '.DS_Store',
   '*.sln',
   '*.wav',

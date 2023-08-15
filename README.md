@@ -10,11 +10,13 @@ npm install clean-sweep
 
 ## Todo:
 
-- CLI
-- Fancy reporting
 - Documentation
 - Tests
 - Autofixing
 - Snippets
 - Readme badges
-- Ensure it works correctly in subdirectories
+- Parse config with zod
+- Separate checks from reporting
+- Custom error messages
+- Combine similar errors
+- Add support for custom allowed characters

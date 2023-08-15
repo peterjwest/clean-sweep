@@ -1,73 +1,106 @@
 import "@total-typescript/ts-reset";
 import { promises as fs } from 'fs';
+import { join, resolve } from 'path';
 
-import { FAILURE_MESSAGES, Failure } from './failures';
+import { Failure } from './failures';
 import { RULES } from './rules';
-import { getProjectFiles, getIgnoredCommittedFiles } from './util';
+import { getProjectDir, getProjectFiles, getIgnoredCommittedFiles } from './util';
 import validateUtf8 from './validateUtf8';
 import checkContent from './checkContent';
 import checkFilePath from './checkFilePath';
 import getConfig from './getConfig';
+import ProgressManager from './ProgressManager';
 
-async function main(): Promise<void> {
-  const [config, configPath] = await getConfig();
-  console.log(configPath ? 'Using default config' : `Using config file: ${configPath}`);
+export default async function cleanSweep(progress: ProgressManager, userDirectory?: string, userConfigPath?: string): Promise<Record<string, Failure[]>> {
+  const directory = userDirectory || './';
+
+  const projectDir = await getProjectDir(directory).catch(() => {
+    throw new Error(`The directory ${resolve(process.cwd(), directory)} is not a git project`);
+  });
+  progress.addSection(`Git project directory: ${projectDir}`);
+
+  const [config, configPath] = await getConfig(projectDir, userConfigPath);
+  progress.addSection(configPath ? `Using config file: ${configPath}` : 'Using default config');
 
   if (!config.enabled) {
-    console.log('All checks disabled, exiting.');
-    return;
+    progress.addSection('All checks disabled, exiting');
+    return {};
   }
 
-  const directory = './';
+  progress.addSection('Loading project files');
+
   const files = config.filterFiles(await getProjectFiles(directory));
   const failures: Record<string, Failure[]> = {};
 
   const pathConfig = config.rules.PATH_VALIDATION;
   const ignoreCommittedConfig = pathConfig.rules.IGNORED_COMMITTED_FILE;
-  if (pathConfig.enabled && ignoreCommittedConfig.enabled) {
-    const ignoredFiles = await getIgnoredCommittedFiles(directory);
 
-    for (const file of ignoreCommittedConfig.filterFiles(ignoredFiles)) {
-      failures[file] = [{
-        type: RULES.IGNORED_COMMITTED_FILE,
-      }];
+  if (pathConfig.enabled && ignoreCommittedConfig.enabled) {
+    progress.addSection('Checking for ignored committed files');
+
+    const ignoredFiles = ignoreCommittedConfig.filterFiles(await getIgnoredCommittedFiles(directory));
+
+    if (ignoredFiles.length) {
+      progress.sectionFailed();
+      for (const file of ignoredFiles) {
+        failures[file] = [{ type: RULES.IGNORED_COMMITTED_FILE }];
+      }
     }
   }
 
-  for (const file of pathConfig.filterFiles(files)) {
-    failures[file] = (failures[file] || []).concat(checkFilePath(file, pathConfig));
+  if (pathConfig.enabled) {
+    progress.addSection('Checking file paths');
+
+    for (const file of pathConfig.filterFiles(files)) {
+      const pathFailures = checkFilePath(file, pathConfig);
+
+      if (pathFailures.length) progress.sectionFailed();
+      failures[file] = (failures[file] || []).concat(pathFailures);
+    }
   }
 
   const contentConfig = config.rules.CONTENT_VALIDATION;
-  for (const file of contentConfig.filterFiles(files)) {
-    let fileFailures = failures[file] || [];
+  if (contentConfig.enabled) {
+    const contentFiles = contentConfig.filterFiles(files);
+    progress.addSection('Checking file contents', contentFiles.length);
 
-    const data = await fs.readFile(file);
-    if (data.length) {
-      if (contentConfig.rules.UTF8_VALIDATION.enabled) {
-        fileFailures = fileFailures.concat(validateUtf8(file, data, contentConfig.rules.UTF8_VALIDATION));
+    for (const file of contentFiles) {
+      progress.progressBarMessage(file);
+
+      let contentFailures = failures[file] || [];
+
+      const data = await fs.readFile(join(projectDir, file));
+      if (data.length) {
+        contentFailures = contentFailures.concat(checkContent(file, data, contentConfig));
       }
-      fileFailures = fileFailures.concat(checkContent(file, data, contentConfig));
+
+      if (contentFailures.length) progress.sectionFailed();
+      failures[file] = contentFailures;
+
+      progress.incrementProgress(contentFailures.length === 0);
     }
 
-    failures[file] = fileFailures;
-  }
+    if (contentConfig.rules.UTF8_VALIDATION.enabled) {
+      const utf8Files = contentConfig.filterFiles(files);
+      progress.addSection('Checking UTF8 encoding', utf8Files.length);
 
-  for (const file in failures) {
-    // Non-null assertion since we're iterating over keys
-    failures[file]!.sort((a, b) => ('line' in a ? a.line : 0) - ('line' in b ? b.line : 0));
-  }
+      for (const file of utf8Files) {
+        progress.progressBarMessage(file);
 
-  for (const file in failures) {
-    // Non-null assertion since we're iterating over keys
-    if (failures[file]!.length) {
-      console.log(file);
-      for (const failure of failures[file]!) {
-        console.log(FAILURE_MESSAGES[failure.type], failure);
+        let utfFailures = failures[file] || [];
+
+        const data = await fs.readFile(join(projectDir, file));
+        if (data.length) {
+          utfFailures = utfFailures.concat(await validateUtf8(file, data, contentConfig.rules.UTF8_VALIDATION));
+        }
+
+        if (utfFailures.length) progress.sectionFailed();
+        failures[file] = utfFailures;
+
+        progress.incrementProgress(utfFailures.length === 0);
       }
-      console.log('');
     }
   }
+
+  return failures;
 }
-
-main().catch(console.error);
