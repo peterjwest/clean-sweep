@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 
-import { FAILURE_MESSAGES } from './failures';
+import { FAILURE_MESSAGES, Failure } from './failures';
 import { toDateString, differenceInSeconds, Results, ResultStats } from './util';
 
 export default function reportResults(results: Results, stats: ResultStats, startedAt: Date) {
@@ -15,10 +15,8 @@ export default function reportResults(results: Results, stats: ResultStats, star
 
       console.log(chalk.red.bold('×'), file);
       for (const failure of fileData.failures) {
-        console.log(
-          chalk.red(`${FAILURE_MESSAGES[failure.type]} ${'line' in failure ? `on line ${failure.line}` : ''}`),
-          failure,
-        );
+        const getMessage = FAILURE_MESSAGES[failure.type] as (failure: Failure) => string;
+        console.log(`${chalk.red(getMessage(failure))} ${chalk.grey(failure.type)}`);
       }
       console.log('');
     }

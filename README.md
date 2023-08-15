@@ -17,7 +17,6 @@ npm install clean-sweep
 - Readme badges
 - Parse config with zod
 - Separate checks from reporting
-- Custom error messages
 - Combine similar errors
 - Add support for custom allowed characters
 - Fix subdmodules
