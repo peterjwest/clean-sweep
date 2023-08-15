@@ -3,6 +3,8 @@ import { promisify } from 'util';
 import childProcess from 'child_process';
 import lodash from 'lodash';
 
+import { Failure } from './failures';
+
 const exec = promisify(childProcess.exec);
 
 const GIT_LIST_BUFFER_SIZE = 10 * 1024 * 1024;
@@ -83,4 +85,27 @@ export class ErrorWithFailures extends Error {
     super(message);
     this.failures = failures;
   }
+}
+
+/** Results for a file, with helper methods */
+export class FileResult {
+  checks: number = 0;
+  failures: Failure[] = [];
+
+  /** Adds a number of failures into this result */
+  addFailures(failures: Failure[]) {
+    this.failures = this.failures.concat(failures);
+  }
+
+  /** Merges another result into this one */
+  mergeWith(fileResult: FileResult) {
+    this.addFailures(fileResult.failures);
+    this.checks += fileResult.checks;
+  }
+}
+
+/** Gets or creates FileResult for a set of results */
+export function getFileResult(results: Record<string, FileResult>, filePath: string): FileResult {
+  const fileResult = results[filePath] || new FileResult();
+  return results[filePath] = fileResult;
 }

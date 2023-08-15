@@ -2,18 +2,21 @@ import "@total-typescript/ts-reset";
 import { promises as fs } from 'fs';
 import { join, resolve } from 'path';
 
-import { Failure } from './failures';
 import { RULES } from './rules';
-import { getProjectDir, getProjectFiles, getIgnoredCommittedFiles } from './util';
+import { getProjectDir, getProjectFiles, getIgnoredCommittedFiles, getFileResult, FileResult } from './util';
 import validateUtf8 from './validateUtf8';
 import checkContent from './checkContent';
 import checkFilePath from './checkFilePath';
 import getConfig from './getConfig';
 import ProgressManager from './ProgressManager';
 
-export default async function cleanSweep(progress: ProgressManager, userDirectory?: string, userConfigPath?: string): Promise<Record<string, Failure[]>> {
-  const directory = userDirectory || './';
+export default async function cleanSweep(
+  progress: ProgressManager,
+  userDirectory?: string,
+  userConfigPath?: string,
+): Promise<Record<string, FileResult>> {
 
+  const directory = userDirectory || './';
   const projectDir = await getProjectDir(directory).catch(() => {
     throw new Error(`The directory ${resolve(process.cwd(), directory)} is not a git project`);
   });
@@ -27,10 +30,10 @@ export default async function cleanSweep(progress: ProgressManager, userDirector
     return {};
   }
 
-  progress.addSection('Loading project files');
+  progress.addSection('Loading project file list');
 
   const files = config.filterFiles(await getProjectFiles(directory));
-  const failures: Record<string, Failure[]> = {};
+  const results: Record<string, FileResult> = {};
 
   const pathConfig = config.rules.PATH_VALIDATION;
   const ignoreCommittedConfig = pathConfig.rules.IGNORED_COMMITTED_FILE;
@@ -43,7 +46,9 @@ export default async function cleanSweep(progress: ProgressManager, userDirector
     if (ignoredFiles.length) {
       progress.sectionFailed();
       for (const file of ignoredFiles) {
-        failures[file] = [{ type: RULES.IGNORED_COMMITTED_FILE }];
+        const fileResult = getFileResult(results, file);
+        fileResult.failures.push({ type: RULES.IGNORED_COMMITTED_FILE });
+        fileResult.checks++;
       }
     }
   }
@@ -52,10 +57,11 @@ export default async function cleanSweep(progress: ProgressManager, userDirector
     progress.addSection('Checking file paths');
 
     for (const file of pathConfig.filterFiles(files)) {
-      const pathFailures = checkFilePath(file, pathConfig);
+      const fileResult = getFileResult(results, file);
+      const result = checkFilePath(file, pathConfig);
+      fileResult.mergeWith(result);
 
-      if (pathFailures.length) progress.sectionFailed();
-      failures[file] = (failures[file] || []).concat(pathFailures);
+      if (result.failures.length) progress.sectionFailed();
     }
   }
 
@@ -67,17 +73,18 @@ export default async function cleanSweep(progress: ProgressManager, userDirector
     for (const file of contentFiles) {
       progress.progressBarMessage(file);
 
-      let contentFailures = failures[file] || [];
-
       const data = await fs.readFile(join(projectDir, file));
-      if (data.length) {
-        contentFailures = contentFailures.concat(checkContent(file, data, contentConfig));
+      if (!data.length) {
+        progress.incrementProgress(true);
+        continue;
       }
 
-      if (contentFailures.length) progress.sectionFailed();
-      failures[file] = contentFailures;
+      const fileResult = getFileResult(results, file);
+      const result = checkContent(file, data, contentConfig);
+      fileResult.mergeWith(result);
 
-      progress.incrementProgress(contentFailures.length === 0);
+      if (result.failures.length) progress.sectionFailed();
+      progress.incrementProgress(result.failures.length === 0);
     }
 
     if (contentConfig.rules.UTF8_VALIDATION.enabled) {
@@ -87,20 +94,27 @@ export default async function cleanSweep(progress: ProgressManager, userDirector
       for (const file of utf8Files) {
         progress.progressBarMessage(file);
 
-        let utfFailures = failures[file] || [];
+        const fileResult = getFileResult(results, file);
 
-        const data = await fs.readFile(join(projectDir, file));
-        if (data.length) {
-          utfFailures = utfFailures.concat(await validateUtf8(file, data, contentConfig.rules.UTF8_VALIDATION));
+        // We only want to analyse files which are invalid UTF8
+        if (!fileResult.failures.find((failure) => failure.type === RULES.MALFORMED_ENCODING)) {
+          continue;
         }
 
-        if (utfFailures.length) progress.sectionFailed();
-        failures[file] = utfFailures;
+        const data = await fs.readFile(join(projectDir, file));
+        if (!data.length) {
+          progress.incrementProgress(true);
+          continue;
+        }
 
-        progress.incrementProgress(utfFailures.length === 0);
+        const result = await validateUtf8(file, data, contentConfig.rules.UTF8_VALIDATION);
+        fileResult.mergeWith(result);
+
+        if (result.failures.length) progress.sectionFailed();
+        progress.incrementProgress(result.failures.length === 0);
       }
     }
   }
 
-  return failures;
+  return results;
 }

@@ -20,3 +20,4 @@ npm install clean-sweep
 - Custom error messages
 - Combine similar errors
 - Add support for custom allowed characters
+- Fix subdmodules

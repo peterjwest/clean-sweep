@@ -2,7 +2,7 @@ import path from 'path';
 
 import { RULES } from './rules';
 import { ExtendedPathConfig } from './config';
-import { Failure } from './failures';
+import { FileResult } from './util';
 
 /** Gets the extension for a file (including multiple extensions), or undefined if it has no extension */
 function getExtension(filePath: string): string | undefined {
@@ -11,22 +11,24 @@ function getExtension(filePath: string): string | undefined {
 }
 
 /** Runs checks on file paths */
-export default function checkFilePath(filePath: string, config: ExtendedPathConfig): Failure[] {
-  const failures: Failure[] = [];
+export default function checkFilePath(filePath: string, config: ExtendedPathConfig): FileResult {
+  const result = new FileResult();
   const extension = getExtension(filePath);
 
   if (config.rules.DS_STORE.enabledFor(filePath)) {
+    result.checks++;
     if (extension === '.DS_Store') {
-      failures.push({ type: RULES.DS_STORE });
-      return failures;
+      result.failures.push({ type: RULES.DS_STORE });
+      return result;
     }
   }
 
   if (config.rules.UPPERCASE_EXTENSION.enabledFor(filePath)) {
+    result.checks++;
     if (extension && extension.match(/[A-Z]/)) {
-      failures.push({ type: RULES.UPPERCASE_EXTENSION });
+      result.failures.push({ type: RULES.UPPERCASE_EXTENSION });
     }
   }
 
-  return failures;
+  return result;
 }

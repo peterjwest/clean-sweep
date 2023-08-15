@@ -47,24 +47,22 @@ export default async function command(argv: string[]) {
     throw new Error('--config must have a value with the format: --config=value');
   }
 
-  const progressManager = new ProgressManager(process.stdout);
-
-  const failures = await cleanSweep(progressManager, args.length > 0 ? args[0] : undefined, typeof options.config === 'string' ? options.config : undefined);
-
-  progressManager.end();
-
-  for (const file in failures) {
-    // Non-null assertion since we're iterating over keys
-    failures[file]!.sort((a, b) => ('line' in a ? a.line : 0) - ('line' in b ? b.line : 0));
-  }
+  const results = await ProgressManager.manage(
+    process.stdout,
+    (progress) => cleanSweep(progress, args.length > 0 ? args[0] : undefined, typeof options.config === 'string' ? options.config : undefined),
+  );
 
   console.log('');
 
-  for (const file in failures) {
+  for (const file in results) {
     // Non-null assertion since we're iterating over keys
-    if (failures[file]!.length) {
+    const fileData = results[file]!;
+
+    if (fileData.failures.length) {
+      fileData.failures.sort((a, b) => ('line' in a ? a.line : 0) - ('line' in b ? b.line : 0));
+
       console.log(chalk.red.bold('×'), file);
-      for (const failure of failures[file]!) {
+      for (const failure of fileData.failures) {
         console.log(
           chalk.red(`${FAILURE_MESSAGES[failure.type]} ${'line' in failure ? `on line ${failure.line}` : ''}`),
           failure,
@@ -74,21 +72,27 @@ export default async function command(argv: string[]) {
     }
   }
 
-  const fileFailures = Object.values(failures);
+  const fileChecks = Object.values(results).map((fileData) => fileData.checks);
+  const totalChecks = lodash.sum(lodash.flatten(fileChecks));
+  const fileFailures = Object.values(results).map((fileData) => fileData.failures).filter((failures) => failures.length);
   const allFailures = lodash.flatten(fileFailures);
   const finishedAt = new Date();
 
   if (allFailures.length === 0) {
     console.log(chalk.inverse(chalk.bold.green(' Success ')));
+    console.log(chalk.grey(`Files checked  ${chalk.green(`${fileChecks.length} passed`)}`));
+    console.log(chalk.grey(`Checks         ${chalk.green(`${totalChecks} passed`)}`));
   } else {
     console.log(chalk.inverse(chalk.bold.red(' Failure ')));
+    console.log(chalk.grey(`Files checked  ${chalk.red(`${fileFailures.length} failed`)} / ${chalk.green(`${fileChecks.length} passed`)}`));
+    console.log(chalk.grey(`Checks         ${chalk.red(`${allFailures.length} failed`)} / ${chalk.green(`${totalChecks} passed`)}`));
+  }
 
-    console.log(chalk.grey(`Files checked  ${chalk.red(`${fileFailures.length} failed`)} / ${chalk.green(`<TODO> passed`)}`));
-    console.log(chalk.grey(`Checks         ${chalk.red(`${allFailures.length} failed`)} / ${chalk.green(`<TODO> passed`)}`));
-    console.log(chalk.grey(`Started at     ${toDateString(startedAt)}`));
-    console.log(chalk.grey(`Duration       ${differenceInSeconds(startedAt, finishedAt)} seconds`));
-    console.log('');
+  console.log(chalk.grey(`Started at     ${toDateString(startedAt)}`));
+  console.log(chalk.grey(`Duration       ${differenceInSeconds(startedAt, finishedAt)} seconds`));
+  console.log('');
 
+  if (allFailures.length > 0) {
     process.exit(1);
   }
 }

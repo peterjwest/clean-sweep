@@ -1,6 +1,6 @@
 import lodash from 'lodash';
 
-import { createEnumNumeric, delay } from './util';
+import { createEnumNumeric, delay, FileResult } from './util';
 import { Failure } from './failures';
 import { ExtendedUtf8Config } from './config';
 
@@ -147,12 +147,12 @@ function getLineBufferNumber(buffer: Buffer, index: number): number {
 }
 
 /** Validates a buffer presumed to contain UTF 8 data, returns an array of failures */
-export default async function validateUtf8(filePath: string, data: Buffer, config: ExtendedUtf8Config): Promise<Failure[]> {
-  let failures: Failure[] = [];
-  let count = 0;
-
+export default async function validateUtf8(filePath: string, data: Buffer, config: ExtendedUtf8Config): Promise<FileResult> {
+  const result = new FileResult();
   const isEnabled = lodash.mapValues(config.rules, (rule) => rule.enabledFor(filePath));
+  result.checks = lodash.sumBy(Object.values(isEnabled), (value) => value ? 1 : 0);
 
+  let count = 0;
   for (let i = 0; i < data.length; i++) {
     const byte = data[i] as number;
     const type = getByteType(byte);
@@ -168,7 +168,7 @@ export default async function validateUtf8(filePath: string, data: Buffer, confi
 
     if (type === BYTE_TYPE.INVALID) {
       if (isEnabled.INVALID_BYTE) {
-        failures.push({
+        result.failures.push({
           type: 'INVALID_BYTE',
           value: serialiseBytes([byte]),
           line: getLineBufferNumber(data, i),
@@ -179,7 +179,7 @@ export default async function validateUtf8(filePath: string, data: Buffer, confi
 
     if (type === BYTE_TYPE.CONTINUATION) {
       if (isEnabled.UNEXPECTED_CONTINUATION_BYTE) {
-        failures.push({
+        result.failures.push({
           type: 'UNEXPECTED_CONTINUATION_BYTE',
           value: serialiseBytes([byte]),
           line: getLineBufferNumber(data, i),
@@ -198,7 +198,7 @@ export default async function validateUtf8(filePath: string, data: Buffer, confi
       }
       else {
         if (config.rules.MISSING_CONTINUATION_BYTE.enabledFor(filePath)) {
-          failures.push({
+          result.failures.push({
             type: 'MISSING_CONTINUATION_BYTE',
             expectedBytes: byteCount,
             value: serialiseBytes(getBytes(data, startIndex, 1)),
@@ -216,7 +216,7 @@ export default async function validateUtf8(filePath: string, data: Buffer, confi
       }
       else {
         if (isEnabled.MISSING_CONTINUATION_BYTE) {
-          failures.push({
+          result.failures.push({
             type: 'MISSING_CONTINUATION_BYTE',
             expectedBytes: byteCount,
             value: serialiseBytes(getBytes(data, startIndex, 2)),
@@ -234,7 +234,7 @@ export default async function validateUtf8(filePath: string, data: Buffer, confi
       }
       else {
         if (isEnabled.MISSING_CONTINUATION_BYTE) {
-          failures.push({
+          result.failures.push({
             type: 'MISSING_CONTINUATION_BYTE',
             expectedBytes: byteCount,
             value: serialiseBytes(getBytes(data, startIndex, 3)),
@@ -251,7 +251,7 @@ export default async function validateUtf8(filePath: string, data: Buffer, confi
 
       for (const [lower, upper] of OVERLONG_RANGES) {
         if (utf8Value >= lower && utf8Value <= upper) {
-          failures.push({
+          result.failures.push({
             type: 'OVERLONG_BYTE_SEQUENCE',
             value: serialiseBytes(bytes),
             line: getLineBufferNumber(data, startIndex),
@@ -262,9 +262,9 @@ export default async function validateUtf8(filePath: string, data: Buffer, confi
 
     if (isEnabled.INVALID_CODE_POINT) {
       const bytes = getBytes(data, startIndex, byteCount);
-      failures = failures.concat(validateCodePoint(getCodePoint(bytes), getLineBufferNumber(data, startIndex)));
+      result.addFailures(validateCodePoint(getCodePoint(bytes), getLineBufferNumber(data, startIndex)));
     }
   }
 
-  return failures;
+  return result;
 }

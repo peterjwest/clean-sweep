@@ -29,6 +29,9 @@ const SECTION_STATUS_ICONS = {
   FAILURE: chalk.red('×'),
 } as const satisfies { [Property in SectionStatus]: string };
 
+/** Frame delay to render progress in milliseconds */
+const FRAME_INTERVAL = 1000 / 20; // 50 ms = 1000 ms / 20 fps
+
 const SAVE_CURSOR = '\u001b7';
 const RESTORE_CURSOR = '\u001b8';
 const MOVE_CURSOR = '\u001b';
@@ -62,7 +65,7 @@ function outputSection(section: Section) {
 function outputProgressBar({ succeeded, failed, total, message }: ProgressBar, width = 40) {
   const successWidth = Math.floor(width * (succeeded / total));
   const errorWidth = Math.floor(width * (failed / total));
-  /** Ensure any non-zero number of errors are visible */
+  // Ensure any non-zero number of errors are visible */
   const clampedErrorWidth = failed > 0 ? Math.max(errorWidth, 1) : 0;
   return [
     chalk.green('▰'.repeat(successWidth)),
@@ -82,15 +85,29 @@ export default class ProgressManager {
     this.stream = stream;
   }
 
+  /** Manages terminal output for an async task */
+  static async manage<Result>(
+    stream: NodeJS.WriteStream,
+    task: (progress: ProgressManager) => Promise<Result>,
+  ): Promise<Result> {
+
+    const progress = new ProgressManager(process.stdout);
+    try {
+      return await task(progress);
+    } finally {
+      progress.end();
+    }
+  }
+
   /** Redraws a section */
   redrawSection(section: Section) {
     rewriteLine(this.stream, 1 + (this.progress ? 1 : 0), outputSection(section));
   }
 
-  /** Redraws the progress bar, throttled to 20 FPS */
+  /** Redraws the progress bar, throttled to the frame interval */
   redrawProgressBar = lodash.throttle((progress: ProgressBar) => {
     rewriteLine(this.stream, 1, outputProgressBar(progress));
-  }, 1000 / 20);
+  }, FRAME_INTERVAL);
 
   /** Adds an in-progress section to be displayed with an optional progress bar */
   addSection(name: string, total?: number) {
@@ -149,8 +166,9 @@ export default class ProgressManager {
     this.sectionResult(false);
   }
 
-  /** Marks the last section as successful. */
+  /** Ends the final section, removes the progress bar */
   end() {
+    this.redrawProgressBar.cancel();
     this.sectionResult(true);
     this.progressBarDone();
   }
