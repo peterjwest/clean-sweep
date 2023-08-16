@@ -3,3 +3,5 @@
 /coverage
 /tests/snippets/*
 !/tests/snippets/config.json
+!/tests/snippets/src
+!/tests/snippets/unlinted.config.ts
