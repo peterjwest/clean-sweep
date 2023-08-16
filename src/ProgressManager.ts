@@ -72,12 +72,14 @@ function outputProgressBar({ succeeded, failed, total, message }: ProgressBar, w
 
 /** Manages named entries (sections) and their status in a terminal stream */
 export default class ProgressManager {
+  interactive: boolean;
   stream: NodeJS.WriteStream;
   sections: Section[] = [];
   progress?: ProgressBar;
 
   constructor(stream: NodeJS.WriteStream) {
     this.stream = stream;
+    this.interactive = stream.isTTY;
   }
 
   /** Manages terminal output for an async task */
@@ -115,7 +117,7 @@ export default class ProgressManager {
     this.sections.push(section);
     this.stream.write(outputSection(section));
 
-    if (total !== undefined) {
+    if (this.interactive && total !== undefined) {
       this.progress = { message: '', succeeded: 0, failed: 0, total };
       this.stream.write(outputProgressBar(this.progress));
     }
@@ -125,6 +127,7 @@ export default class ProgressManager {
 
   /** Increments the successes or failures of the progress bar by 1 */
   incrementProgress(success: boolean) {
+    if (!this.interactive) return;
     if (!this.progress) throw new Error('No progress bar to update');
     this.progress[success ? 'succeeded' : 'failed']++;
     this.redrawProgressBar(this.progress);
@@ -132,6 +135,7 @@ export default class ProgressManager {
 
   /** Updates the progress bar message */
   progressBarMessage(message: string) {
+    if (!this.interactive) return;
     if (!this.progress) throw new Error('No progress bar to update');
     this.progress.message = message;
     this.redrawProgressBar(this.progress);
@@ -143,7 +147,7 @@ export default class ProgressManager {
     if (!section) return;
     if (section.status === SECTION_STATUSES.IN_PROGRESS) {
       section.status = success ? SECTION_STATUSES.SUCCESS : SECTION_STATUSES.FAILURE;
-      this.redrawSection(section);
+      if (this.interactive) this.redrawSection(section);
     }
   }
 
