@@ -1,7 +1,7 @@
 {
   "name": "unlinted",
   "version": "0.1.0",
-  "description": "Project-wide linting and hygiene",
+  "description": "General purpose project-wide linting and hygiene",
   "type": "module",
   "main": "./build/wrapper.cjs",
   "exports": {

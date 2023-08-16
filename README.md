@@ -1,6 +1,6 @@
 # unlinted
 
-Project-wide linting and hygiene
+General purpose project-wide linting and hygiene
 
 ## Installation:
 
