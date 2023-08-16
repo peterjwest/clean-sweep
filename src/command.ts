@@ -10,25 +10,26 @@ import ProgressManager from './ProgressManager';
 import { getResultStats } from './util';
 
 export const commandHelp = multiline`
-  Project-wide linting and hygiene
+${chalk.cyan('Project-wide linting and hygiene')}
 
   Usage: npx unlinted [<path>] [--help] [--config=<config-path>]
   Description:
-    Runs various checks on files in your git project.
-    Includes staged & unstaged files, excluding gitignored files.
+    ${chalk.grey('Runs various checks on files in your git project.')}
+    ${chalk.grey('Includes staged & unstaged files, excludes gitignored files.')}
 
   Arguments:
     <path>
-      Directory to run on, uses the Git project root if not specified
+    ${chalk.grey('Directory to run on, uses the Git project root if not specified')}
 
   Options:
     --config=<config-path>
-      A path to the the TS, JS or JSON config file.
-      The default value is "unlinted.config.ts" in the Git project root,
-      falls back to "unlinted.config.js", and then "unlinted.config.json"
+      ${chalk.grey('A path to the the TS, JS or JSON config file.')}
+      ${chalk.grey('The default value is "unlinted.config.ts" in the Git project root,')}
+      ${chalk.grey('falls back to "unlinted.config.js", and then "unlinted.config.json"')}
 
     --help
-      Display this message
+    ${chalk.grey('Display this message')}
+
 `;
 
 /** Tests snippets as a command */
@@ -39,7 +40,7 @@ export default async function command(argv: string[]) {
   console.log('\n' + chalk.inverse(chalk.bold.cyan(' unlinted ')) + chalk.cyan(' version ' + packageData.version) + '\n');
 
   if (options.help) {
-    console.log(chalk.grey(commandHelp));
+    console.log(commandHelp);
     return;
   }
 
