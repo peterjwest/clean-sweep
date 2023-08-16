@@ -10,6 +10,8 @@ import checkFilePath from './checkFilePath';
 import getConfig from './getConfig';
 import ProgressManager from './ProgressManager';
 
+export type { Config, UserConfig } from './config';
+
 export default async function unlinted(
   progress: ProgressManager,
   userDirectory?: string,
