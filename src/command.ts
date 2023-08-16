@@ -3,7 +3,7 @@ import chalk from 'chalk';
 
 
 import packageData from '../package.json';
-import cleanSweep from './index';
+import unlint from './index';
 import argvParser from './argvParser';
 import reportResults from './reportResults';
 import ProgressManager from './ProgressManager';
@@ -12,7 +12,7 @@ import { getResultStats } from './util';
 export const commandHelp = multiline`
   Project-wide linting and hygiene
 
-  Usage: npx clean-sweep [<path>] [--help] [--config=<config-path>]
+  Usage: npx unlint [<path>] [--help] [--config=<config-path>]
   Description:
     Runs various checks on files in your git project.
     Includes staged & unstaged files, excluding gitignored files.
@@ -24,8 +24,8 @@ export const commandHelp = multiline`
   Options:
     --config=<config-path>
       A path to the the TS, JS or JSON config file.
-      The default value is "clean-sweep.config.ts" in the Git project root,
-      falls back to "clean-sweep.config.js", and then "clean-sweep.config.json"
+      The default value is "unlint.config.ts" in the Git project root,
+      falls back to "unlint.config.js", and then "unlint.config.json"
 
     --help
       Display this message
@@ -36,7 +36,7 @@ export default async function command(argv: string[]) {
   const { args, options } = argvParser(argv);
   const startedAt = new Date();
 
-  console.log('\n' + chalk.inverse(chalk.bold.cyan(' clean-sweep ')) + chalk.cyan(' version ' + packageData.version) + '\n');
+  console.log('\n' + chalk.inverse(chalk.bold.cyan(' unlint ')) + chalk.cyan(' version ' + packageData.version) + '\n');
 
   if (options.help) {
     console.log(chalk.grey(commandHelp));
@@ -49,7 +49,7 @@ export default async function command(argv: string[]) {
 
   const results = await ProgressManager.manage(
     process.stdout,
-    (progress) => cleanSweep(progress, args.length > 0 ? args[0] : undefined, typeof options.config === 'string' ? options.config : undefined),
+    (progress) => unlint(progress, args.length > 0 ? args[0] : undefined, typeof options.config === 'string' ? options.config : undefined),
   );
 
 

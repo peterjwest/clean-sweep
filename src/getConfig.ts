@@ -1,5 +1,6 @@
 import { join, resolve } from 'path';
 
+
 import { DEFAULT_CONFIG, ExtendedConfig, UserConfig } from './config';
 import checkConfig from './checkConfig';
 import combineConfig from './combineConfig';
@@ -8,9 +9,9 @@ import { fileReadable, ErrorWithFailures } from './util';
 
 /** Get full configuration, combining default with user config */
 export default async function getConfig(projectDir: string, userConfigPath?: string): Promise<[ExtendedConfig, string | undefined]> {
-  const DEFAULT_TS_CONFIG = join(projectDir, 'clean-sweep.config.ts');
-  const DEFAULT_JS_CONFIG = join(projectDir, 'clean-sweep.config.js');
-  const DEFAULT_JSON_CONFIG = join(projectDir, 'clean-sweep.config.json');
+  const DEFAULT_TS_CONFIG = join(projectDir, 'unlint.config.ts');
+  const DEFAULT_JS_CONFIG = join(projectDir, 'unlint.config.js');
+  const DEFAULT_JSON_CONFIG = join(projectDir, 'unlint.config.json');
 
   let configPath: string | undefined;
 
@@ -18,6 +19,10 @@ export default async function getConfig(projectDir: string, userConfigPath?: str
   else if (await fileReadable(DEFAULT_TS_CONFIG)) configPath = DEFAULT_TS_CONFIG;
   else if (await fileReadable(DEFAULT_JS_CONFIG)) configPath = DEFAULT_JS_CONFIG;
   else if (await fileReadable(DEFAULT_JSON_CONFIG)) configPath = DEFAULT_JSON_CONFIG;
+
+  // TODO: Check extension, respond appropriately
+  // import { readFile } from 'fs/promises';
+  // const json = JSON.parse(await readFile());
 
   const configModule: unknown = configPath ? await import(configPath) : undefined;
   // Unwrap default export if it exists

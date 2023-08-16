@@ -1,5 +1,5 @@
 {
-  "name": "clean-sweep",
+  "name": "unlint",
   "version": "0.0.1",
   "description": "Project-wide linting and hygiene",
   "type": "module",
@@ -9,21 +9,21 @@
     "require": "./build/wrapper.cjs"
   },
   "bin": {
-    "clean-sweep": "./build/code/command.js"
+    "unlint": "./build/unlint.sh"
   },
   "engines": {
     "node": ">=14"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/peterjwest/clean-sweep.git"
+    "url": "git+https://github.com/peterjwest/unlint.git"
   },
   "files": [
     "/build"
   ],
   "author": "Peter West",
   "license": "MIT",
-  "homepage": "https://github.com/peterjwest/clean-sweep#readme",
+  "homepage": "https://github.com/peterjwest/unlint#readme",
   "keywords": [
     "linting",
     "whitespace",
@@ -31,10 +31,11 @@
     "unicode"
   ],
   "scripts": {
-    "build": "rm -rf build/code && tsup src/index.ts src/command.ts --format cjs,esm --dts --out-dir build/code",
+    "build": "rm -rf build/code && tsup src/index.ts src/unlint.ts --format cjs,esm --dts --out-dir build/code",
     "lint": "eslint .",
     "test:coverage": "vitest run --coverage",
     "test:unit": "vitest run",
+    "test:snippets": "npx test-snippets",
     "preinstall": "npx only-allow pnpm"
   },
   "dependencies": {
@@ -44,6 +45,8 @@
     "jschardet": "^3.0.0",
     "lodash": "^4.17.21",
     "multiline-ts": "^3.1.0",
+    "test-snippets": "^1.0.0",
+    "tsx": "^3.12.7",
     "zod": "^3.21.4"
   },
   "devDependencies": {

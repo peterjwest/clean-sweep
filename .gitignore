@@ -1,3 +1,5 @@
 /node_modules
 /build/code
 /coverage
+/tests/snippets/*
+!/tests/snippets/config.json

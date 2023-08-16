@@ -35,6 +35,7 @@ const FRAME_INTERVAL = 1000 / 20; // 50 ms = 1000 ms / 20 fps
 const SAVE_CURSOR = '\u001b7';
 const RESTORE_CURSOR = '\u001b8';
 const MOVE_CURSOR = '\u001b';
+const CLEAR_LINE = '\u001b[2K';
 
 /** Moves the cursor up a number of lines in the terminal */
 function moveCursorUp(lines: number) {
@@ -45,15 +46,9 @@ function moveCursorUp(lines: number) {
 function rewriteLine(stream: NodeJS.WriteStream, line: number, text: string) {
   stream.write(SAVE_CURSOR);
   stream.write(moveCursorUp(line));
-  clearCurrentLine(stream);
+  stream.write(CLEAR_LINE);
   stream.write(text);
   stream.write(RESTORE_CURSOR);
-}
-
-/** Clears the current line in the terminal */
-function clearCurrentLine(stream: NodeJS.WriteStream) {
-  stream.cursorTo(0);
-  stream.clearLine(0);
 }
 
 /** Returns a section with its current icon */
@@ -157,7 +152,7 @@ export default class ProgressManager {
     if (this.progress) {
       this.progress = undefined;
       this.stream.write(moveCursorUp(1));
-      clearCurrentLine(this.stream);
+      this.stream.write(CLEAR_LINE);
     }
   }
 

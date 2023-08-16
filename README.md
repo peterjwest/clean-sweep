@@ -1,11 +1,18 @@
-# clean-sweep
+# unlint
 
 Project-wide linting and hygiene
 
 ## Installation:
 
 ```
-npm install clean-sweep
+npm install unlint
+```
+
+## Usage
+
+<!-- snippet: bash -->
+```
+npx unlint
 ```
 
 ## Todo:
@@ -18,3 +25,5 @@ npm install clean-sweep
 - Parse config with zod
 - Add support for custom allowed characters
 - Fix submodules
+- Check for TTY
+- Run shell as TS?
