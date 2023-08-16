@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "description": "General purpose project-wide linting and hygiene",
   "type": "module",
-  "main": "./build/wrapper.cjs",
+  "main": "./build/code/index.js",
   "exports": {
-    "import": "./build/es6/index.js",
+    "import": "./build/code/index.js",
     "require": "./build/wrapper.cjs"
   },
   "bin": {
