@@ -27,8 +27,8 @@ function combineRuleset(defaultRule: GenericRulesetConfig, rule: PartialConfig<G
 
   const expandedRule = typeof rule === 'boolean' ? { enabled: rule } : rule;
   return {
-    enabled: expandedRule.enabled !== undefined ? expandedRule.enabled : defaultRule.enabled,
-    exclude: expandedRule.exclude !== undefined ? expandedRule.exclude : defaultRule.exclude,
+    ...defaultRule,
+    ...lodash.omitBy(expandedRule, (value) => value === undefined),
     rules: expandedRule.rules !== undefined ? combineRules(defaultRule.rules, expandedRule.rules) : defaultRule.rules,
   };
 }
@@ -43,8 +43,8 @@ function combineRule(defaultRule: RuleConfig, rule: PartialConfig<RuleConfig> | 
 
   const expandedRule = typeof rule === 'boolean' ? { enabled: rule } : rule;
   return {
-    enabled: expandedRule.enabled !== undefined ? expandedRule.enabled : defaultRule.enabled,
-    exclude: expandedRule.exclude !== undefined ? expandedRule.exclude : defaultRule.exclude,
+    ...defaultRule,
+    ...lodash.omitBy(expandedRule, (value) => value === undefined),
   };
 }
 

@@ -114,9 +114,12 @@ export default function checkContent(filePath: string, data: Buffer, config: Ext
   if (config.rules.UNEXPECTED_CHARACTER.enabledFor(filePath)) {
     result.checks++;
 
-    const unexpectedCharacters = Array.from(
-      content.matchAll(/[^\n\t\r\x20-\xFF\p{L}\p{M}\p{Extended_Pictographic}]/ug),
+    const allowed = config.rules.UNEXPECTED_CHARACTER.allowed;
+    const unexpectedCharacters = (
+      Array.from(content.matchAll(/[^\n\t\r\x20-\xFF\p{L}\p{M}\p{Extended_Pictographic}]/ug))
+      .filter((match) => !allowed.includes(match[0]))
     );
+
     if (unexpectedCharacters.length) {
       const groupedMatches = Object.values(lodash.groupBy(unexpectedCharacters, (match) => match[0]));
 

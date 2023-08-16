@@ -81,6 +81,22 @@ Looks for files with no final newline. Files without a final newline can lead to
 
 Looks for unusual unicode characters: non-ASCII, non-unicode letter and non-emoji characters. Some of these are confusing or ambiguous and could lead to unexpected behaviour.
 
+Specific characters can be allowed using the following config:
+
+```js
+export default {
+  rules: {
+    CONTENT_VALIDATION: {
+      rules: {
+        UNEXPECTED_CHARACTER: {
+          allowed: ['✓'],
+        },
+      },
+    },
+  },
+};
+```
+
 ### UTF8 checks
 
 If your files are encoded with UTF8, they can be checked for encoding errors. These can occur when files are manipulated by different applications which are not expecting the same encoding, or applications which are not able to safely encode UTF8.
@@ -140,7 +156,7 @@ export default {
         TRAILING_WHITESPACE: { enabled: true, exclude: [] },
         MULTIPLE_FINAL_NEWLINES: { enabled: true, exclude: [] },
         NO_FINAL_NEWLINE: { enabled: true, exclude: [] },
-        UNEXPECTED_CHARACTER: { enabled: true, exclude: [] },
+        UNEXPECTED_CHARACTER: { enabled: true, exclude: [], allowed: [] },
         UTF8_VALIDATION: {
           enabled: true,
           exclude: [],
@@ -212,9 +228,7 @@ export default function config(defaultConfig: Config): UserConfig {
 - Tests
 - Autofixing
 - More snippets
-- Readme badges
 - Parse config with zod
-- Add support for custom allowed characters
 - Fix submodules
 - Disable interactive components if not TTY
 

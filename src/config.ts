@@ -41,7 +41,7 @@ export interface GenericRulesetConfig {
 export type ExtendConfig<T> = ExpandRecursive<{
   [P in keyof T | 'enabledFor' | 'filterFiles']: (
     (P extends keyof T ?
-      (P extends 'exclude' | 'enabled' ? T[P] :
+      (P extends 'exclude' | 'enabled' | 'allowed' ? T[P] :
         (P extends 'rules' ? ExtendConfigRules<T[P]> :
           never
         )
@@ -70,7 +70,7 @@ export type Config = RulesetConfig<{
     TRAILING_WHITESPACE: RuleConfig;
     MULTIPLE_FINAL_NEWLINES: RuleConfig;
     NO_FINAL_NEWLINE: RuleConfig;
-    UNEXPECTED_CHARACTER: RuleConfig;
+    UNEXPECTED_CHARACTER: RuleConfig & { allowed: readonly string[] };
     UTF8_VALIDATION: RulesetConfig<{
       INVALID_BYTE: RuleConfig;
       UNEXPECTED_CONTINUATION_BYTE: RuleConfig;
@@ -147,7 +147,7 @@ export const DEFAULT_CONFIG: Config = {
         TRAILING_WHITESPACE: { enabled: true, exclude: [] },
         MULTIPLE_FINAL_NEWLINES: { enabled: true, exclude: [] },
         NO_FINAL_NEWLINE: { enabled: true, exclude: [] },
-        UNEXPECTED_CHARACTER: { enabled: true, exclude: [] },
+        UNEXPECTED_CHARACTER: { enabled: true, exclude: [], allowed: [] },
         UTF8_VALIDATION: {
           enabled: true,
           exclude: [],
@@ -162,7 +162,7 @@ export const DEFAULT_CONFIG: Config = {
       },
     },
   },
-} as const satisfies GenericRulesetConfig;
+};
 
 export type ExtendedConfig = ExtendConfig<Config>;
 export type ExtendedPathConfig = ExtendedConfig['rules']['PATH_VALIDATION'];
