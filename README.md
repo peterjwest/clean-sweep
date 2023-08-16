@@ -188,7 +188,7 @@ export default {
 };
 ```
 
-You could also disable the `CONTENT_VALIDATION` rule entirely:
+You could also disable all `CONTENT_VALIDATION` rules entirely:
 
 ```js
 export default {
