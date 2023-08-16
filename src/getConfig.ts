@@ -20,10 +20,6 @@ export default async function getConfig(projectDir: string, userConfigPath?: str
   else if (await fileReadable(DEFAULT_JS_CONFIG)) configPath = DEFAULT_JS_CONFIG;
   else if (await fileReadable(DEFAULT_JSON_CONFIG)) configPath = DEFAULT_JSON_CONFIG;
 
-  // TODO: Check extension, respond appropriately
-  // import { readFile } from 'fs/promises';
-  // const json = JSON.parse(await readFile());
-
   const configModule: unknown = configPath ? await import(configPath) : undefined;
   // Unwrap default export if it exists
   const configEntity = configModule && typeof configModule === 'object' && 'default' in configModule ? configModule.default : configModule;
