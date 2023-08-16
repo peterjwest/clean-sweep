@@ -90,9 +90,9 @@ commands:
 
   tests:
     steps:
-      # - run:
-      #     name: Test documentation snippets
-      #     command: pnpm test:snippets
+      - run:
+          name: Test documentation snippets
+          command: pnpm test:snippets
       - run:
           name: TS Unit tests
           command: pnpm test:coverage
