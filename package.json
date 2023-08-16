@@ -1,6 +1,6 @@
 {
   "name": "unlint",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Project-wide linting and hygiene",
   "type": "module",
   "main": "./build/wrapper.cjs",
@@ -9,21 +9,21 @@
     "require": "./build/wrapper.cjs"
   },
   "bin": {
-    "unlint": "./build/unlint.sh"
+    "unlinted": "./build/unlinted.sh"
   },
   "engines": {
     "node": ">=14"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/peterjwest/unlint.git"
+    "url": "git+https://github.com/peterjwest/unlinted.git"
   },
   "files": [
     "/build"
   ],
   "author": "Peter West",
   "license": "MIT",
-  "homepage": "https://github.com/peterjwest/unlint#readme",
+  "homepage": "https://github.com/peterjwest/unlinted#readme",
   "keywords": [
     "linting",
     "whitespace",
@@ -31,7 +31,7 @@
     "unicode"
   ],
   "scripts": {
-    "build": "rm -rf build/code && tsup src/index.ts src/unlint.ts --format cjs,esm --dts --out-dir build/code",
+    "build": "rm -rf build/code && tsup src/index.ts src/unlinted.ts --format cjs,esm --dts --out-dir build/code",
     "lint": "eslint .",
     "test:coverage": "vitest run --coverage",
     "test:unit": "vitest run",

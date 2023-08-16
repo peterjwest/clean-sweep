@@ -9,9 +9,9 @@ import { fileReadable, ErrorWithFailures } from './util';
 
 /** Get full configuration, combining default with user config */
 export default async function getConfig(projectDir: string, userConfigPath?: string): Promise<[ExtendedConfig, string | undefined]> {
-  const DEFAULT_TS_CONFIG = join(projectDir, 'unlint.config.ts');
-  const DEFAULT_JS_CONFIG = join(projectDir, 'unlint.config.js');
-  const DEFAULT_JSON_CONFIG = join(projectDir, 'unlint.config.json');
+  const DEFAULT_TS_CONFIG = join(projectDir, 'unlinted.config.ts');
+  const DEFAULT_JS_CONFIG = join(projectDir, 'unlinted.config.js');
+  const DEFAULT_JSON_CONFIG = join(projectDir, 'unlinted.config.json');
 
   let configPath: string | undefined;
 

@@ -1,18 +1,18 @@
-# unlint
+# unlinted
 
 Project-wide linting and hygiene
 
 ## Installation:
 
 ```
-npm install unlint
+npm install unlinted
 ```
 
 ## Usage
 
 <!-- snippet: bash -->
 ```
-npx unlint
+npx unlinted
 ```
 
 ## Todo:

@@ -10,7 +10,7 @@ import checkFilePath from './checkFilePath';
 import getConfig from './getConfig';
 import ProgressManager from './ProgressManager';
 
-export default async function cleanSweep(
+export default async function unlinted(
   progress: ProgressManager,
   userDirectory?: string,
   userConfigPath?: string,
