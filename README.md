@@ -20,10 +20,8 @@ npx unlinted
 - Documentation
 - Tests
 - Autofixing
-- Snippets
+- More snippets
 - Readme badges
 - Parse config with zod
 - Add support for custom allowed characters
 - Fix submodules
-- Check for TTY
-- Run shell as TS?
