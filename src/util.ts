@@ -65,6 +65,17 @@ export async function getProjectDir(directory: string) {
   return (await exec(`git rev-parse --show-toplevel`, { cwd: directory })).stdout.trim();
 }
 
+function isSystemError(error: unknown): error is NodeJS.ErrnoException {
+  return Boolean(error && typeof error === 'object' && 'code' in error);
+}
+
+export async function getFileContent(path: string) {
+  return fs.readFile(path).catch((error) => {
+    if (isSystemError(error) && error.code === 'EISDIR') return Buffer.alloc(0);
+    throw error;
+  });
+}
+
 export async function delay(time: number) {
   return new Promise(resolve => setTimeout(resolve, time));
 }

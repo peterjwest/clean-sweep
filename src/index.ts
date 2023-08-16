@@ -1,9 +1,8 @@
 import "@total-typescript/ts-reset";
-import { promises as fs } from 'fs';
 import { join, resolve } from 'path';
 
 import { RULES } from './rules';
-import { getProjectDir, getProjectFiles, getIgnoredCommittedFiles, getFileResult, Results } from './util';
+import { getProjectDir, getProjectFiles, getFileContent, getIgnoredCommittedFiles, getFileResult, Results } from './util';
 import validateUtf8 from './validateUtf8';
 import checkContent from './checkContent';
 import checkFilePath from './checkFilePath';
@@ -75,7 +74,7 @@ export default async function unlinted(
     for (const file of contentFiles) {
       progress.progressBarMessage(file);
 
-      const data = await fs.readFile(join(projectDir, file));
+      const data = await getFileContent(join(projectDir, file));
       if (!data.length) {
         progress.incrementProgress(true);
         continue;
@@ -104,7 +103,7 @@ export default async function unlinted(
           continue;
         }
 
-        const data = await fs.readFile(join(projectDir, file));
+        const data = await getFileContent(join(projectDir, file));
         if (!data.length) {
           progress.incrementProgress(true);
           continue;

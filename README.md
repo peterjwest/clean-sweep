@@ -229,7 +229,6 @@ export default function config(defaultConfig: Config): UserConfig {
 - Autofixing
 - More snippets
 - Parse config with zod
-- Fix submodules
 - Disable interactive components if not TTY
 
 [npm-badge]: https://badge.fury.io/js/unlinted.svg
