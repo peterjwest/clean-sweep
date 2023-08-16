@@ -1,5 +1,5 @@
 {
-  "name": "unlint",
+  "name": "unlinted",
   "version": "0.1.0",
   "description": "Project-wide linting and hygiene",
   "type": "module",
