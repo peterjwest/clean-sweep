@@ -75,7 +75,7 @@ export default async function unlinted(
       progress.progressBarMessage(file);
 
       const data = await getFileContent(join(projectDir, file));
-      if (!data.length) {
+      if (!data || !data.length) {
         progress.incrementProgress(true);
         continue;
       }
@@ -104,7 +104,7 @@ export default async function unlinted(
         }
 
         const data = await getFileContent(join(projectDir, file));
-        if (!data.length) {
+        if (!data || !data.length) {
           progress.incrementProgress(true);
           continue;
         }

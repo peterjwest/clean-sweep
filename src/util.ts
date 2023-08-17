@@ -69,9 +69,10 @@ function isSystemError(error: unknown): error is NodeJS.ErrnoException {
   return Boolean(error && typeof error === 'object' && 'code' in error);
 }
 
-export async function getFileContent(path: string) {
+/** Returns the contents of a file, returns undefined if it is a directory */
+export async function getFileContent(path: string): Promise<Buffer | undefined> {
   return fs.readFile(path).catch((error) => {
-    if (isSystemError(error) && error.code === 'EISDIR') return Buffer.alloc(0);
+    if (isSystemError(error) && error.code === 'EISDIR') return undefined;
     throw error;
   });
 }
