@@ -9,7 +9,7 @@ import reportResults from './reportResults';
 import ProgressManager from './ProgressManager';
 import { getResultStats, ErrorWithFailures } from './util';
 
-export const commandHelp = multiline`
+export const COMMAND_HELP = multiline`
 ${chalk.cyan('Project-wide linting and hygiene')}
 
   Usage: npx unlinted [<path>] [--help] [--config=<config-path>]
@@ -53,7 +53,7 @@ export default async function command(argv: string[]) {
   console.log('\n' + chalk.inverse(chalk.bold.cyan(' unlinted ')) + chalk.cyan(' version ' + packageData.version) + '\n');
 
   if (options.help) {
-    console.log(commandHelp);
+    console.log(COMMAND_HELP);
     return;
   }
 
