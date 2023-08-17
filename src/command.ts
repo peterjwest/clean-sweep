@@ -7,7 +7,7 @@ import unlinted from './index';
 import argvParser from './argvParser';
 import reportResults from './reportResults';
 import ProgressManager from './ProgressManager';
-import { getResultStats } from './util';
+import { getResultStats, ErrorWithFailures } from './util';
 
 export const commandHelp = multiline`
 ${chalk.cyan('Project-wide linting and hygiene')}
@@ -31,6 +31,19 @@ ${chalk.cyan('Project-wide linting and hygiene')}
     ${chalk.grey('Display this message')}
 
 `;
+
+/** Formats command errors */
+export function formatCommandError(error: unknown): string {
+  if (error instanceof ErrorWithFailures) {
+    const messages = [`Error: ${error.message}`];
+    for (const failure of error.failures) {
+      messages.push(`> ${failure}`);
+    }
+    return messages.join('\n');
+  } else {
+    return `Error: ${String(error)}`;
+  }
+}
 
 /** Run unlinted as a command */
 export default async function command(argv: string[]) {
