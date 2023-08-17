@@ -1,11 +1,29 @@
 import { join, resolve } from 'path';
-
+import z from 'zod';
+import { fromZodError } from 'zod-validation-error';
 
 import { DEFAULT_CONFIG, ExtendedConfig, UserConfig } from './config';
 import checkConfig from './checkConfig';
 import combineConfig from './combineConfig';
 import extendConfig from './extendConfig';
 import { fileReadable, ErrorWithFailures } from './util';
+
+/** Return an array of (slightly) more user friendly errors from ZodError */
+function getZodErrors(error: z.ZodError) {
+  return fromZodError(error, { issueSeparator: '\n', prefix: null }).message.split('\n');
+}
+
+/** Parses a Config with zod and wraps any ZodErrors */
+function parseConfig(configObject: unknown): UserConfig {
+  try {
+    return UserConfig.parse(configObject);
+  } catch (error: unknown) {
+    if (error instanceof z.ZodError) {
+      throw new ErrorWithFailures('Config invalid', getZodErrors(error));
+    }
+    throw error;
+  }
+}
 
 /** Get full configuration, combining default with user config */
 export default async function getConfig(projectDir: string, userConfigPath?: string): Promise<[ExtendedConfig, string | undefined]> {
@@ -25,9 +43,8 @@ export default async function getConfig(projectDir: string, userConfigPath?: str
   const configEntity = configModule && typeof configModule === 'object' && 'default' in configModule ? configModule.default : configModule;
   // If the config is a function, run it with the default config
   const configObject: unknown = typeof configEntity === 'function' ? configEntity(DEFAULT_CONFIG) : configEntity;
-
-  // TODO: Validate with ZOD
-  const userConfig: UserConfig | undefined = configObject ? configObject : undefined;
+  // Parse with zod to ensure the type is correct
+  const userConfig: UserConfig | undefined = configObject ? parseConfig(configObject) : undefined;
   const config = userConfig ? combineConfig(DEFAULT_CONFIG, userConfig) : DEFAULT_CONFIG;
 
   const errors = checkConfig(config);

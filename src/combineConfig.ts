@@ -1,6 +1,17 @@
 import lodash from 'lodash';
 
-import { RuleConfig, Config, UserConfig, PartialConfig, PartialConfigRules, GenericRules, GenericRulesetConfig } from './config';
+import { ExpandRecursive } from './util';
+import { RuleConfig, Config, UserConfig, PlainConfigKey, GenericRules, GenericRulesetConfig } from './config';
+
+/** Helper type for a partial config, since user configs can be partially specified  */
+export type PartialConfig<T> = ExpandRecursive<{
+  [P in keyof T]?: P extends PlainConfigKey ? T[P] : PartialConfigRules<T[P]>;
+}>;
+
+/** Helper type for partial config rules */
+export type PartialConfigRules<T> = {
+  [P in keyof T]?: PartialConfig<T[P]> | boolean;
+};
 
 /**
  * Combines the default rules of a ruleset, with user specified rules.

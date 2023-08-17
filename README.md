@@ -228,7 +228,6 @@ export default function config(defaultConfig: Config): UserConfig {
 - Tests
 - Autofixing
 - More snippets
-- Parse config with zod
 
 [npm-badge]: https://badge.fury.io/js/unlinted.svg
 [npm-url]: https://www.npmjs.com/package/unlinted

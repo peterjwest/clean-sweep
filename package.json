@@ -48,7 +48,8 @@
     "multiline-ts": "^3.1.0",
     "test-snippets": "^1.0.0",
     "tsx": "^3.12.7",
-    "zod": "^3.21.4"
+    "zod": "^3.22.1",
+    "zod-validation-error": "^1.4.0"
   },
   "devDependencies": {
     "@babel/core": "^7.22.9",

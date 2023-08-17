@@ -1,29 +1,11 @@
+import { z } from "zod";
+
+import { DEFAULT_CONTENT_EXCLUDED } from './constants';
 import { ExpandRecursive } from './util';
-import { RuleName, RulesetName } from './rules';
+import { RULES, RULESETS } from './rules';
 
-/** Helper type for a rule which contains other rules */
-type RulesetConfig<Type> = ExpandRecursive<{
-  enabled: boolean;
-  exclude: readonly string[];
-  rules: {
-    [Key in keyof Type]: Key extends RuleName | RulesetName ? Type[Key] : never;
-  };
-}>
-
-export type RuleConfig = {
-  enabled: boolean;
-  exclude: readonly string[];
-}
-
-/** Helper type for a partial config, since user configs can be partially specified  */
-export type PartialConfig<T> = ExpandRecursive<{
-  [P in keyof T]?: P extends 'exclude' | 'enabled' ? T[P] : PartialConfigRules<T[P]>;
-}>;
-
-/** Helper type for partial config rules */
-export type PartialConfigRules<T> = {
-  [P in keyof T]?: PartialConfig<T[P]> | boolean;
-};
+export type PlainConfigKey = 'exclude' | 'enabled' | 'allowed';
+export type HelperKey = 'enabledFor' | 'filterFiles';
 
 /** Generic rules dictionary, used for manipulating rules */
 export interface GenericRules {
@@ -39,9 +21,9 @@ export interface GenericRulesetConfig {
 
 /** Helper type to extend a config with utility functions */
 export type ExtendConfig<T> = ExpandRecursive<{
-  [P in keyof T | 'enabledFor' | 'filterFiles']: (
+  [P in keyof T | HelperKey]: (
     (P extends keyof T ?
-      (P extends 'exclude' | 'enabled' | 'allowed' ? T[P] :
+      (P extends PlainConfigKey ? T[P] :
         (P extends 'rules' ? ExtendConfigRules<T[P]> :
           never
         )
@@ -55,72 +37,120 @@ type ExtendConfigRules<T> = {
   [P in keyof T]: ExtendConfig<T[P]>;
 };
 
-/** Full configuration type */
-export type Config = RulesetConfig<{
-  PATH_VALIDATION: RulesetConfig<{
-    DS_STORE: RuleConfig;
-    UPPERCASE_EXTENSION: RuleConfig;
-    IGNORED_COMMITTED_FILE: RuleConfig;
-  }>;
-  CONTENT_VALIDATION: RulesetConfig<{
-    MALFORMED_ENCODING: RuleConfig;
-    UNEXPECTED_ENCODING: RuleConfig;
-    CARRIAGE_RETURN: RuleConfig;
-    TAB: RuleConfig;
-    TRAILING_WHITESPACE: RuleConfig;
-    MULTIPLE_FINAL_NEWLINES: RuleConfig;
-    NO_FINAL_NEWLINE: RuleConfig;
-    UNEXPECTED_CHARACTER: RuleConfig & { allowed: readonly string[] };
-    UTF8_VALIDATION: RulesetConfig<{
-      INVALID_BYTE: RuleConfig;
-      UNEXPECTED_CONTINUATION_BYTE: RuleConfig;
-      MISSING_CONTINUATION_BYTE: RuleConfig;
-      OVERLONG_BYTE_SEQUENCE: RuleConfig;
-      INVALID_CODE_POINT: RuleConfig;
-    }>;
-  }>;
-}>;
+const RuleConfig = z.object({
+  enabled: z.boolean(),
+  exclude: z.array(z.string()).readonly(),
+}).strict();
 
-export type UserConfig = PartialConfig<Config>;
+export type RuleConfig = z.infer<typeof RuleConfig>;
 
-/**
- * Files which are excluded from content checks by default
- * Either because they are binary, or not usually edited as plaintext
- */
-const DEFAULT_CONTENT_EXCLUDED = [
-  'package-lock.json',
-  'pnpm-lock.yaml',
-  'yarn.lock',
-  '.DS_Store',
-  '*.sln',
-  '*.wav',
-  '*.mp3',
-  '*.raw',
-  '*.webm',
-  '*.jpg',
-  '*.jpeg',
-  '*.gif',
-  '*.png',
-  '*.bmp',
-  '*.ico',
-  '*.ttf',
-  '*.eot',
-  '*.woff',
-  '*.woff2',
-  '*.deb',
-  '*.bin',
-  '*.exe',
-  '*.pdf',
-  '*.svg',
-  '*.z',
-  '*.cod',
-  '*.fwu',
-  '*.tar',
-  '*.gz',
-  '*.zip',
-  '*.7z',
-  '*.7zip',
-] as const;
+const RulesetConfig = z.object({
+  enabled: z.boolean(),
+  exclude: z.array(z.string()).readonly(),
+}).strict();
+
+function createRules<RulesType extends z.ZodRawShape>(rules: RulesType): { rules: z.ZodObject<RulesType> } {
+  for (const key in rules) {
+    if (!(key in RULES) && !(key in RULESETS)) {
+      throw new Error(`Rule ${key} is not a valid rule`);
+    }
+  }
+  return { rules: z.object(rules).strict() };
+}
+
+function partialRules<RulesType extends z.ZodRawShape>({ rules }: { rules: z.ZodObject<RulesType> }) {
+  return { rules: rules.partial() };
+}
+
+function createPartialRule<Type extends z.ZodRawShape>(rule: z.ZodObject<Type>) {
+  return z.union([rule.partial(), z.boolean()]);
+}
+
+const Config = RulesetConfig.extend(createRules({
+  PATH_VALIDATION: RulesetConfig.extend(createRules({
+    DS_STORE: RuleConfig,
+    UPPERCASE_EXTENSION: RuleConfig,
+    IGNORED_COMMITTED_FILE: RuleConfig,
+  })),
+  CONTENT_VALIDATION: RulesetConfig.extend(createRules({
+    MALFORMED_ENCODING: RuleConfig,
+    UNEXPECTED_ENCODING: RuleConfig,
+    CARRIAGE_RETURN: RuleConfig,
+    TAB: RuleConfig,
+    TRAILING_WHITESPACE: RuleConfig,
+    MULTIPLE_FINAL_NEWLINES: RuleConfig,
+    NO_FINAL_NEWLINE: RuleConfig,
+    UNEXPECTED_CHARACTER: RuleConfig.extend({
+      allowed: z.array(z.string()).readonly(),
+    }),
+    UTF8_VALIDATION: RulesetConfig.extend(createRules({
+      INVALID_BYTE: RuleConfig,
+      UNEXPECTED_CONTINUATION_BYTE: RuleConfig,
+      MISSING_CONTINUATION_BYTE: RuleConfig,
+      OVERLONG_BYTE_SEQUENCE: RuleConfig,
+      INVALID_CODE_POINT: RuleConfig,
+    })),
+  })),
+}));
+
+export type Config = ExpandRecursive<z.infer<typeof Config>>;
+
+const PartialRuleConfig = createPartialRule(RuleConfig);
+
+export const UserConfig = RulesetConfig.extend(partialRules(createRules({
+  PATH_VALIDATION: createPartialRule(
+    RulesetConfig.extend(partialRules(createRules({
+      DS_STORE: PartialRuleConfig,
+      UPPERCASE_EXTENSION: PartialRuleConfig,
+      IGNORED_COMMITTED_FILE: PartialRuleConfig,
+    }))),
+  ),
+  CONTENT_VALIDATION: createPartialRule(
+    RulesetConfig.extend(partialRules(createRules({
+      MALFORMED_ENCODING: PartialRuleConfig,
+      UNEXPECTED_ENCODING: PartialRuleConfig,
+      CARRIAGE_RETURN: PartialRuleConfig,
+      TAB: PartialRuleConfig,
+      TRAILING_WHITESPACE: PartialRuleConfig,
+      MULTIPLE_FINAL_NEWLINES: PartialRuleConfig,
+      NO_FINAL_NEWLINE: createPartialRule(RuleConfig),
+      UNEXPECTED_CHARACTER: createPartialRule(
+        RuleConfig.extend({ allowed: z.array(z.string()).readonly() }),
+      ),
+      UTF8_VALIDATION: createPartialRule(
+        RulesetConfig.extend(partialRules(createRules({
+          INVALID_BYTE: createPartialRule(RuleConfig),
+          UNEXPECTED_CONTINUATION_BYTE: createPartialRule(RuleConfig),
+          MISSING_CONTINUATION_BYTE: createPartialRule(RuleConfig),
+          OVERLONG_BYTE_SEQUENCE: createPartialRule(RuleConfig),
+          INVALID_CODE_POINT: createPartialRule(RuleConfig),
+        }))),
+      ),
+    }))),
+  ),
+}))).partial();
+
+export type UserConfig = ExpandRecursive<z.infer<typeof UserConfig>>;
+
+export const x: UserConfig = {
+  enabled: true,
+  exclude: [],
+  rules: {
+    PATH_VALIDATION: {
+      enabled: true,
+      exclude: ['x'],
+      rules: {
+        DS_STORE: undefined,
+      },
+    },
+    CONTENT_VALIDATION: {
+      rules: {
+        UNEXPECTED_CHARACTER: { allowed: ['x'] },
+        UTF8_VALIDATION: undefined,
+      },
+    },
+  },
+};
 
 /** Default full configuration */
 export const DEFAULT_CONFIG: Config = {
