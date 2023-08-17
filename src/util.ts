@@ -61,10 +61,12 @@ export async function getProjectFiles(directory: string): Promise<string[]> {
   return lodash.difference(files, deleted);
 }
 
+/** Returns the Git root directory of a directory */
 export async function getProjectDir(directory: string) {
   return (await exec(`git rev-parse --show-toplevel`, { cwd: directory })).stdout.trim();
 }
 
+/** Checks if an error is a Node system error */
 function isSystemError(error: unknown): error is NodeJS.ErrnoException {
   return Boolean(error && typeof error === 'object' && 'code' in error);
 }
@@ -77,15 +79,19 @@ export async function getFileContent(path: string): Promise<Buffer | undefined> 
   });
 }
 
-export async function delay(time: number) {
-  return new Promise(resolve => setTimeout(resolve, time));
+/** Async delay */
+export async function delay(milliseconds: number) {
+  await new Promise(resolve => setTimeout(resolve, milliseconds));
 }
 
+/** Outputs a date in the format HH:MM:SS (YYYY-MM-DD) */
 export function toDateString(date: Date) {
   return date.toISOString().replace(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2}).\d{3}Z/, '$4:$5:$6 ($1-$2-$3)');
 }
 
-export function differenceInSeconds(start: Date, end: Date) {
+
+/** Finds the difference between two dates in seconds as a formatted string */
+export function differenceInSeconds(start: Date, end: Date): string {
   return ((end.valueOf() - start.valueOf()) / 1000).toFixed(2);
 }
 
@@ -137,9 +143,7 @@ export interface ResultStats {
   };
 }
 
-/**
- * Counts failures and totals in Results
- */
+/** Counts failures and totals in a Results object */
 export function getResultStats(results: Results): ResultStats {
   const fileResults = Object.values(results);
   const failedFileResults = Object.values(results).filter((result) => result.failures.length);
