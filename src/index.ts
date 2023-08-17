@@ -10,6 +10,7 @@ import getConfig from './getConfig';
 import ProgressManager from './ProgressManager';
 
 export type { Config, UserConfig } from './config';
+export { DEFAULT_CONTENT_EXCLUDED } from './constants';
 
 export default async function unlinted(
   progress: ProgressManager,
