@@ -32,7 +32,7 @@ ${chalk.cyan('Project-wide linting and hygiene')}
 
 `;
 
-/** Tests snippets as a command */
+/** Run unlinted as a command */
 export default async function command(argv: string[]) {
   const { args, options } = argvParser(argv);
   const startedAt = new Date();
