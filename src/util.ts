@@ -7,7 +7,7 @@ import { Failure } from './failures';
 
 const exec = promisify(childProcess.exec);
 
-const GIT_LIST_BUFFER_SIZE = 10 * 1024 * 1024;
+export const GIT_LIST_BUFFER_SIZE = 10 * 1024 * 1024;
 
 /** Expands a named type to show its contents */
 export type Expand<Type> = Type extends infer Obj ? { [Key in keyof Obj]: Obj[Key] } : never;
@@ -39,44 +39,44 @@ export function createEnumNumeric<const T extends readonly string[]>(arr: T): Ex
 }
 
 /** Checks if a file is readable */
-export async function fileReadable(path: string): Promise<boolean> {
-  return fs.access(path, constants.R_OK).then(() => true).catch(() => false);
+export async function fileReadable(path: string, deps = { access: fs.access }): Promise<boolean> {
+  return deps.access(path, constants.R_OK).then(() => true).catch(() => false);
 }
 
 /** Returns the result of a `git ls-files` command with the full-name option */
-export async function gitListFiles(directory: string, options: string): Promise<string[]> {
-  const data = (await exec(`git ls-files --full-name ${options}`, { cwd: directory, maxBuffer: GIT_LIST_BUFFER_SIZE })).stdout;
+export async function gitListFiles(directory: string, options: string, deps = { exec }): Promise<string[]> {
+  const data = (await deps.exec(`git ls-files --full-name ${options}`.trim(), { cwd: directory, maxBuffer: GIT_LIST_BUFFER_SIZE })).stdout;
   return data.trim().split('\n').filter((file) => file);
 }
 
 /** Get all committed files which should be ignored */
-export async function getIgnoredCommittedFiles(directory: string): Promise<string[]> {
-  return gitListFiles(directory, '--cached --ignored --exclude-standard');
+export async function getIgnoredCommittedFiles(directory: string, deps = { gitListFiles }): Promise<string[]> {
+  return deps.gitListFiles(directory, '--cached --ignored --exclude-standard');
 }
 
 /** Get all committed & untracked files */
-export async function getProjectFiles(directory: string): Promise<string[]> {
-  const deleted = await gitListFiles(directory, '--deleted --exclude-standard');
-  const files = await gitListFiles(directory, '--cached --others --exclude-standard');
+export async function getProjectFiles(directory: string, deps = { gitListFiles }): Promise<string[]> {
+  const deleted = await deps.gitListFiles(directory, '--deleted --exclude-standard');
+  const files = await deps.gitListFiles(directory, '--cached --others --exclude-standard');
   return lodash.difference(files, deleted);
 }
 
 /** Returns the Git root directory of a directory */
-export async function getProjectDir(directory: string) {
-  return (await exec(`git rev-parse --show-toplevel`, { cwd: directory })).stdout.trim();
-}
-
-/** Checks if an error is a Node system error */
-function isSystemError(error: unknown): error is NodeJS.ErrnoException {
-  return Boolean(error && typeof error === 'object' && 'code' in error);
+export async function getProjectDir(directory: string, deps = { exec }) {
+  return (await deps.exec(`git rev-parse --show-toplevel`, { cwd: directory })).stdout.trim();
 }
 
 /** Returns the contents of a file, returns undefined if it is a directory */
-export async function getFileContent(path: string): Promise<Buffer | undefined> {
-  return fs.readFile(path).catch((error) => {
+export async function getFileContent(path: string, deps = { readFile: fs.readFile }): Promise<Buffer | undefined> {
+  return deps.readFile(path).catch((error) => {
     if (isSystemError(error) && error.code === 'EISDIR') return undefined;
     throw error;
   });
+}
+
+/** Checks if an error is a Node system error */
+export function isSystemError(error: unknown): error is NodeJS.ErrnoException {
+  return Boolean(error && error instanceof Error && 'code' in error);
 }
 
 /** Async delay */
@@ -113,12 +113,14 @@ export class FileResult {
   /** Adds a number of failures into this result */
   addFailures(failures: Failure[]) {
     this.failures = this.failures.concat(failures);
+    return this;
   }
 
   /** Merges another result into this one */
   mergeWith(fileResult: FileResult) {
     this.addFailures(fileResult.failures);
     this.checks += fileResult.checks;
+    return this;
   }
 }
 
