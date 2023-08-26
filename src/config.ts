@@ -7,49 +7,41 @@ import { RULES, RULESETS } from './rules';
 export type PlainConfigKey = 'exclude' | 'enabled' | 'allowed';
 export type HelperKey = 'enabledFor' | 'filterFiles';
 
-/** Generic rules dictionary, used for manipulating rules */
-export interface GenericRules {
-  [key: string]: GenericRulesetConfig | RuleConfig;
-}
+/** Helper type to extend a ruleset with utility functions */
+export type ExtendRuleset<T extends Rulesets> = (T & {
+  rules: ExtendRules<T['rules']>;
+  enabledFor: (filePath: string) => boolean;
+  filterFiles: (filePaths: string[]) => string[];
+});
 
-/** Generic ruleset, used for manipulating rules */
-export interface GenericRulesetConfig {
-  enabled: boolean;
-  exclude: readonly string[];
-  rules: GenericRules;
-}
-
-/** Helper type to extend a config with utility functions */
-export type ExtendConfig<T> = ExpandRecursive<{
+/** Helper type to extend a rule with utility functions */
+export type ExtendRule<T> = {
   [P in keyof T | HelperKey]: (
-    (P extends keyof T ?
-      (P extends PlainConfigKey ? T[P] :
-        (P extends 'rules' ? ExtendConfigRules<T[P]> :
-          never
-        )
-      ) :
+    (P extends keyof T ? T[P] :
       (P extends 'enabledFor' ? (filePath: string) => boolean : (filePaths: string[]) => string[])
     )
   );
-}>;
-
-type ExtendConfigRules<T> = {
-  [P in keyof T]: ExtendConfig<T[P]>;
 };
 
-const RuleConfig = z.object({
+/** Helper type to extend a rules object with utility functions */
+export type ExtendRules<T extends Rulesets['rules']> = {
+  [P in keyof T]: (T[P] extends Rulesets ? ExtendRuleset<T[P]> : ExtendRule<T[P]>);
+};
+
+export const RuleConfig = z.object({
   enabled: z.boolean(),
   exclude: z.array(z.string()).readonly(),
+  rules: z.undefined().optional(),
 }).strict();
 
 export type RuleConfig = z.infer<typeof RuleConfig>;
 
-const RulesetConfig = z.object({
+export const RulesetConfig = z.object({
   enabled: z.boolean(),
   exclude: z.array(z.string()).readonly(),
 }).strict();
 
-function createRules<RulesType extends z.ZodRawShape>(rules: RulesType): { rules: z.ZodObject<RulesType> } {
+export function createRules<RulesType extends z.ZodRawShape>(rules: RulesType): { rules: z.ZodObject<RulesType> } {
   for (const key in rules) {
     if (!(key in RULES) && !(key in RULESETS)) {
       throw new Error(`Rule ${key} is not a valid rule`);
@@ -95,6 +87,16 @@ const Config = RulesetConfig.extend(createRules({
 
 export type Config = ExpandRecursive<z.infer<typeof Config>>;
 
+export type PathRuleset = Config['rules']['PATH_VALIDATION'];
+export type ContentRuleset = Config['rules']['CONTENT_VALIDATION'];
+export type Utf8Ruleset = ContentRuleset['rules']['UTF8_VALIDATION'];
+export type Rulesets = Config | PathRuleset | ContentRuleset | Utf8Ruleset;
+
+export type ExtendedConfig = ExtendRuleset<Config>;
+export type ExtendedPathConfig = ExtendedConfig['rules']['PATH_VALIDATION'];
+export type ExtendedContentConfig = ExtendedConfig['rules']['CONTENT_VALIDATION'];
+export type ExtendedUtf8Config = ExtendedContentConfig['rules']['UTF8_VALIDATION'];
+
 const PartialRuleConfig = createPartialRule(RuleConfig);
 
 export const UserConfig = RulesetConfig.extend(partialRules(createRules({
@@ -131,26 +133,6 @@ export const UserConfig = RulesetConfig.extend(partialRules(createRules({
 }))).partial();
 
 export type UserConfig = ExpandRecursive<z.infer<typeof UserConfig>>;
-
-export const x: UserConfig = {
-  enabled: true,
-  exclude: [],
-  rules: {
-    PATH_VALIDATION: {
-      enabled: true,
-      exclude: ['x'],
-      rules: {
-        DS_STORE: undefined,
-      },
-    },
-    CONTENT_VALIDATION: {
-      rules: {
-        UNEXPECTED_CHARACTER: { allowed: ['x'] },
-        UTF8_VALIDATION: undefined,
-      },
-    },
-  },
-};
 
 /** Default full configuration */
 export const DEFAULT_CONFIG: Config = {
@@ -193,8 +175,3 @@ export const DEFAULT_CONFIG: Config = {
     },
   },
 };
-
-export type ExtendedConfig = ExtendConfig<Config>;
-export type ExtendedPathConfig = ExtendedConfig['rules']['PATH_VALIDATION'];
-export type ExtendedContentConfig = ExtendedConfig['rules']['CONTENT_VALIDATION'];
-export type ExtendedUtf8Config = ExtendedContentConfig['rules']['UTF8_VALIDATION'];

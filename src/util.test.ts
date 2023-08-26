@@ -1,13 +1,17 @@
 import assert from 'assert';
 import { describe, test } from 'vitest';
-import sinon from 'sinon';
+import sinon, { SinonSpy } from 'sinon';
 import multiline from 'multiline-ts';
 import assertStub from 'sinon-assert-stub';
 import { constants } from 'fs';
+import z from 'zod';
 
 import {
   createEnum,
   createEnumNumeric,
+  currentDirectory,
+  exitProcess,
+  getZodErrors,
   fileReadable,
   gitListFiles,
   getIgnoredCommittedFiles,
@@ -16,6 +20,7 @@ import {
   getFileContent,
   isSystemError,
   delay,
+  currentDate,
   toDateString,
   differenceInSeconds,
   getFileResult,
@@ -66,18 +71,59 @@ describe('createEnumNumeric', () => {
   });
 });
 
+describe('currentDirectory', () => {
+  test('Converts an array to a object where the values equal the indexes', () => {
+    const mockProcess = { ...process, cwd: sinon.mock().returns('/foo/bar') };
+
+    assert.strictEqual(currentDirectory({ process: mockProcess }), '/foo/bar');
+  });
+});
+
+describe('exitProcess', () => {
+  test('Runs process.exit with the specified code', () => {
+    const exit = sinon.mock() as unknown as SinonSpy<any[], never>;
+
+    exitProcess(1, { process: { ...process, exit } });
+    assertStub.calledOnceWith(exit, [1]);
+  });
+
+  test('Runs process.exit with no code', () => {
+    const exit = sinon.mock() as unknown as SinonSpy<any[], never>;
+
+    exitProcess(undefined, { process: { ...process, exit } });
+    assertStub.calledOnceWith(exit, [undefined]);
+  });
+});
+
+describe('getZodErrors', () => {
+  test('Returns a list of errors from a ZodError', () => {
+    const MockSchema = z.object({
+      value: z.union([z.boolean(), z.string()]),
+      items: z.array(z.string()).readonly(),
+    }).strict();
+
+    const result = MockSchema.safeParse({ value: true, items: [1, '2', '3'], banana: 'Hello' });
+    assert.strictEqual(result.success, false);
+
+    assert.deepStrictEqual(getZodErrors(result.error), [
+      'Expected string, received number at "items[0]"',
+      `Unrecognized key(s) in object: 'banana'`,
+    ]);
+  });
+});
+
 describe('fileReadable', () => {
   test('Resolves with true when a file is readable', async () => {
     const access = sinon.stub().resolves();
 
-    assert.deepStrictEqual(await fileReadable('real.txt', { access }), true);
+    assert.strictEqual(await fileReadable('real.txt', { access }), true);
     assertStub.calledOnceWith(access, ['real.txt', constants.R_OK]);
   });
 
   test('Resolves with false when a file is not readable', async () => {
     const access = sinon.stub().rejects(new Error('Some error'));
 
-    assert.deepStrictEqual(await fileReadable('fake.txt', { access }), false);
+    assert.strictEqual(await fileReadable('fake.txt', { access }), false);
     assertStub.calledOnceWith(access, ['fake.txt', constants.R_OK]);
   });
 });
@@ -215,7 +261,7 @@ describe('getFileContent', () => {
   test('Resolves with file contents', async () => {
     const readFile = sinon.stub().resolves('foo');
 
-    assert.deepStrictEqual(await getFileContent('file.txt', { readFile }), 'foo');
+    assert.strictEqual(await getFileContent('file.txt', { readFile }), 'foo');
     assertStub.calledOnceWith(readFile, ['file.txt']);
   });
 
@@ -228,13 +274,13 @@ describe('getFileContent', () => {
     );
     const readFile = sinon.stub().rejects(mockError);
 
-    assert.deepStrictEqual(await getFileContent('src', { readFile }), undefined);
+    assert.strictEqual(await getFileContent('src', { readFile }), undefined);
     assertStub.calledOnceWith(readFile, ['src']);
   });
 
   test('Rejects if the file is not found', async () => {
     const mockError = new MockSystemError(
-      'ENOENT: no such file or directory, open \'fake.txt\'',
+      `ENOENT: no such file or directory, open 'fake.txt'`,
       'ENOENT',
       -2,
       'open',
@@ -273,11 +319,24 @@ describe('delay', () => {
   });
 });
 
+describe('currentDate', () => {
+  test('Returns the current date', () => {
+    const date = new Date('2001-02-03T04:05:06.007Z');
+    const clock = sinon.useFakeTimers(date);
+
+    try {
+      assert.deepStrictEqual(currentDate(), date);
+    } finally {
+      clock.restore();
+    }
+  });
+});
+
 describe('toDateString', () => {
   test('Converts a date to a string', () => {
     const date = new Date('2001-02-03T04:05:06.007Z');
 
-    assert.deepStrictEqual(toDateString(date), '04:05:06 (2001-02-03)');
+    assert.strictEqual(toDateString(date), '04:05:06 (2001-02-03)');
   });
 });
 
@@ -286,13 +345,13 @@ describe('differenceInSeconds', () => {
     const first = new Date('2000-01-01T00:00:00.000Z');
     const second = new Date('2000-01-01T00:01:23.126Z');
 
-    assert.deepStrictEqual(differenceInSeconds(first, second), '83.13');
+    assert.strictEqual(differenceInSeconds(first, second), '83.13');
   });
 
   test('Finds zero difference in seconds between the same date', () => {
     const date = new Date('2000-01-01T00:00:00.000Z');
 
-    assert.deepStrictEqual(differenceInSeconds(date, date), '0.00');
+    assert.strictEqual(differenceInSeconds(date, date), '0.00');
   });
 });
 

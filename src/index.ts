@@ -7,6 +7,7 @@ import validateUtf8 from './validateUtf8';
 import checkContent from './checkContent';
 import checkFilePath from './checkFilePath';
 import getConfig from './getConfig';
+import extendConfig from './extendConfig';
 import ProgressManager from './ProgressManager';
 
 export type { Config, UserConfig } from './config';
@@ -24,7 +25,9 @@ export default async function unlinted(
   });
   progress.addSection(`Git project directory: ${projectDir}`);
 
-  const [config, configPath] = await getConfig(projectDir, userConfigPath);
+  const [plainConfig, configPath] = await getConfig(projectDir, userConfigPath);
+  const config = extendConfig(plainConfig);
+
   progress.addSection(configPath ? `Using config file: ${configPath}` : 'Using default config');
 
   if (!config.enabled) {

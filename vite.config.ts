@@ -10,8 +10,7 @@ export default defineConfig({
         'src/**',
       ],
       exclude: [
-        'src/index.ts',
-        'src/command.ts',
+        'src/unlinted.ts',
       ],
       reporter: [
         'text',

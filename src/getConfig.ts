@@ -1,44 +1,45 @@
 import { join, resolve } from 'path';
 import z from 'zod';
-import { fromZodError } from 'zod-validation-error';
 
-import { DEFAULT_CONFIG, ExtendedConfig, UserConfig } from './config';
+import { DEFAULT_CONFIG, Config, UserConfig } from './config';
 import checkConfig from './checkConfig';
 import combineConfig from './combineConfig';
-import extendConfig from './extendConfig';
-import { fileReadable, ErrorWithFailures } from './util';
-
-/** Return an array of (slightly) more user friendly errors from ZodError */
-function getZodErrors(error: z.ZodError) {
-  return fromZodError(error, { issueSeparator: '\n', prefix: null }).message.split('\n');
-}
+import { currentDirectory, importModule, getZodErrors, fileReadable, ErrorWithFailures } from './util';
 
 /** Parses a Config with zod and wraps any ZodErrors */
-function parseConfig(configObject: unknown): UserConfig {
+export function parseConfig(configObject: unknown): UserConfig {
   try {
     return UserConfig.parse(configObject);
   } catch (error: unknown) {
-    if (error instanceof z.ZodError) {
-      throw new ErrorWithFailures('Config invalid', getZodErrors(error));
-    }
-    throw error;
+    throw new ErrorWithFailures('Config invalid', getZodErrors(error as z.ZodError));
   }
 }
 
-/** Get full configuration, combining default with user config */
-export default async function getConfig(projectDir: string, userConfigPath?: string): Promise<[ExtendedConfig, string | undefined]> {
+/** Gets the specified or inferred path for the config */
+export async function getConfigPath(
+  projectDir: string,
+  userConfigPath?: string,
+  deps = { fileReadable, currentDirectory }
+): Promise<string | undefined> {
   const DEFAULT_TS_CONFIG = join(projectDir, 'unlinted.config.ts');
   const DEFAULT_JS_CONFIG = join(projectDir, 'unlinted.config.js');
   const DEFAULT_JSON_CONFIG = join(projectDir, 'unlinted.config.json');
 
-  let configPath: string | undefined;
+  if (userConfigPath) return resolve(deps.currentDirectory(), userConfigPath);
+  else if (await deps.fileReadable(DEFAULT_TS_CONFIG)) return DEFAULT_TS_CONFIG;
+  else if (await deps.fileReadable(DEFAULT_JS_CONFIG)) return DEFAULT_JS_CONFIG;
+  else if (await deps.fileReadable(DEFAULT_JSON_CONFIG)) return DEFAULT_JSON_CONFIG;
+}
 
-  if (userConfigPath) configPath = resolve(process.cwd(), userConfigPath);
-  else if (await fileReadable(DEFAULT_TS_CONFIG)) configPath = DEFAULT_TS_CONFIG;
-  else if (await fileReadable(DEFAULT_JS_CONFIG)) configPath = DEFAULT_JS_CONFIG;
-  else if (await fileReadable(DEFAULT_JSON_CONFIG)) configPath = DEFAULT_JSON_CONFIG;
+/** Get full configuration, combining default with user config */
+export default async function getConfig(
+  projectDir: string,
+  userConfigPath?: string,
+  deps = { getConfigPath, importModule },
+): Promise<[Config, string | undefined]> {
+  const configPath = await deps.getConfigPath(projectDir, userConfigPath);
+  const configModule: unknown = configPath ? await deps.importModule(configPath) : undefined;
 
-  const configModule: unknown = configPath ? await import(configPath) : undefined;
   // Unwrap default export if it exists
   const configEntity = configModule && typeof configModule === 'object' && 'default' in configModule ? configModule.default : configModule;
   // If the config is a function, run it with the default config
@@ -52,5 +53,5 @@ export default async function getConfig(projectDir: string, userConfigPath?: str
     throw new ErrorWithFailures('Config invalid', errors);
   }
 
-  return [extendConfig(config), userConfigPath ? userConfigPath : configPath];
+  return [config, userConfigPath ? userConfigPath : configPath];
 }

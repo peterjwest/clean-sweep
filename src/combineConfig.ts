@@ -1,12 +1,12 @@
 import lodash from 'lodash';
+import type { Entries } from 'type-fest';
 
-import { ExpandRecursive } from './util';
-import { RuleConfig, Config, UserConfig, PlainConfigKey, GenericRules, GenericRulesetConfig } from './config';
+import { RuleConfig, Config, UserConfig, PlainConfigKey, Rulesets } from './config';
 
 /** Helper type for a partial config, since user configs can be partially specified  */
-export type PartialConfig<T> = ExpandRecursive<{
+export type PartialConfig<T> = {
   [P in keyof T]?: P extends PlainConfigKey ? T[P] : PartialConfigRules<T[P]>;
-}>;
+};
 
 /** Helper type for partial config rules */
 export type PartialConfigRules<T> = {
@@ -18,14 +18,12 @@ export type PartialConfigRules<T> = {
  * If a user rule is boolean it is expanded  to a full rule
  * If a user rule is undefined it is ignored
  */
-function combineRules(defaultRules: GenericRules, rules: PartialConfigRules<GenericRules>): GenericRules {
-  return lodash.mapValues(defaultRules, (defaultRule, name) => {
-    if (!(name in rules)) return defaultRule;
-    if ('rules' in defaultRule) {
-      return combineRuleset(defaultRule, rules[name]);
-    }
-    return combineRule(defaultRule, rules[name]);
-  });
+function combineRules<Ruleset extends Rulesets>(defaultRules: Ruleset['rules'], rules: PartialConfigRules<Ruleset['rules']>): Ruleset['rules'] {
+  return Object.fromEntries((Object.entries(defaultRules) as Entries<Ruleset['rules']>).map(([name, defaultRule]) => {
+    const ruleName = name as keyof Ruleset['rules'];
+    if (!(ruleName in rules)) return [ruleName, defaultRule];
+    return [ruleName, defaultRule.rules ? combineRuleset(defaultRule, rules[ruleName]) : combineRule(defaultRule, rules[ruleName])];
+  })) as Ruleset['rules'];
 }
 
 /**
@@ -33,14 +31,14 @@ function combineRules(defaultRules: GenericRules, rules: PartialConfigRules<Gene
  * If the user ruleset is boolean it is expanded to a full ruleset
  * If the user ruleset is undefined it is ignored
  */
-function combineRuleset(defaultRule: GenericRulesetConfig, rule: PartialConfig<GenericRulesetConfig> | boolean | undefined): GenericRulesetConfig {
-  if (rule === undefined) return defaultRule;
+function combineRuleset<Ruleset extends Rulesets>(defaultRuleset: Ruleset, ruleset: PartialConfig<Ruleset> | boolean | undefined): Ruleset {
+  if (ruleset === undefined) return defaultRuleset;
 
-  const expandedRule = typeof rule === 'boolean' ? { enabled: rule } : rule;
+  const expandedRule = typeof ruleset === 'boolean' ? { enabled: ruleset, rules: undefined } : ruleset;
   return {
-    ...defaultRule,
+    ...defaultRuleset,
     ...lodash.omitBy(expandedRule, (value) => value === undefined),
-    rules: expandedRule.rules !== undefined ? combineRules(defaultRule.rules, expandedRule.rules) : defaultRule.rules,
+    rules: expandedRule.rules ? combineRules(defaultRuleset.rules, expandedRule.rules) : defaultRuleset.rules,
   };
 }
 
@@ -61,6 +59,5 @@ function combineRule(defaultRule: RuleConfig, rule: PartialConfig<RuleConfig> | 
 
 /** Combines a default config with a user config  */
 export default function combineConfig(defaultConfig: Config, config: UserConfig): Config {
-  // Cast here as we transition from generic back to specific rules
-  return combineRuleset(defaultConfig, config) as Config;
+  return combineRuleset(defaultConfig, config);
 }

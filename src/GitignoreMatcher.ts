@@ -25,6 +25,6 @@ export default class GitignoreMatcher {
 
   /** Creates a copy of this matcher with additional gitignore rules */
   extend(rules: readonly string[]): GitignoreMatcher {
-    return new GitignoreMatcher([... this.rules, ...rules]);
+    return new GitignoreMatcher([...this.rules, ...rules]);
   }
 }

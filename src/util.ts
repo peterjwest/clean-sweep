@@ -2,6 +2,8 @@ import { promises as fs, constants } from 'fs';
 import { promisify } from 'util';
 import childProcess from 'child_process';
 import lodash from 'lodash';
+import { fromZodError } from 'zod-validation-error';
+import z from 'zod';
 
 import { Failure } from './failures';
 
@@ -36,6 +38,31 @@ export function createEnum<const T extends readonly string[]>(arr: T): Expand<Ob
 /** Creates an enum from a string tuple */
 export function createEnumNumeric<const T extends readonly string[]>(arr: T): Expand<InvertTuple<T>> {
   return Object.fromEntries(arr.map((value, index) => [value, index])) as Expand<InvertTuple<T>>;
+}
+
+/** Wrapper function for process.cwd, makes dependency injection simpler */
+export function currentDirectory(deps = { process }) {
+  return deps.process.cwd();
+}
+
+/** Wrapper function for process.exit, makes dependency injection simpler */
+export function exitProcess(code?: number, deps = { process }) {
+  deps.process.exit(code);
+}
+
+/**
+ * Wrapper function for import, makes dependency injection simpler.
+ * This function is excluded from coverage because mocking `import` is painful
+ */
+/* c8 ignore start */
+export async function importModule(path: string): Promise<unknown> {
+  return import(path);
+}
+/* c8 ignore end */
+
+/** Return an array of (slightly) more user friendly errors from ZodError */
+export function getZodErrors(error: z.ZodError) {
+  return fromZodError(error, { issueSeparator: '\n', prefix: null }).message.split('\n');
 }
 
 /** Checks if a file is readable */
@@ -84,11 +111,15 @@ export async function delay(milliseconds: number) {
   await new Promise(resolve => setTimeout(resolve, milliseconds));
 }
 
+/** Wrapper function for `new Date()` because it's hard to subclass Date in TS */
+export function currentDate() {
+  return new Date();
+}
+
 /** Outputs a date in the format HH:MM:SS (YYYY-MM-DD) */
 export function toDateString(date: Date) {
   return date.toISOString().replace(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2}).\d{3}Z/, '$4:$5:$6 ($1-$2-$3)');
 }
-
 
 /** Finds the difference between two dates in seconds as a formatted string */
 export function differenceInSeconds(start: Date, end: Date): string {

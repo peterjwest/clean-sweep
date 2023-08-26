@@ -7,28 +7,28 @@ import unlinted from './index';
 import argvParser from './argvParser';
 import reportResults from './reportResults';
 import ProgressManager from './ProgressManager';
-import { getResultStats, ErrorWithFailures } from './util';
+import { currentDate, exitProcess, getResultStats, ErrorWithFailures } from './util';
 
 export const COMMAND_HELP = multiline`
-${chalk.cyan('Project-wide linting and hygiene')}
+  ${chalk.cyan('Project-wide linting and hygiene')}
 
-  Usage: npx unlinted [<path>] [--help] [--config=<config-path>]
-  Description:
-    ${chalk.grey('Runs various checks on files in your git project.')}
-    ${chalk.grey('Includes staged & unstaged files, excludes gitignored files.')}
+    Usage: npx unlinted [<path>] [--help] [--config=<config-path>]
+    Description:
+      ${chalk.grey('Runs various checks on files in your git project.')}
+      ${chalk.grey('Includes staged & unstaged files, excludes gitignored files.')}
 
-  Arguments:
-    <path>
-    ${chalk.grey('Directory to run on, uses the Git project root if not specified')}
+    Arguments:
+      <path>
+      ${chalk.grey('Directory to run on, uses the Git project root if not specified')}
 
-  Options:
-    --config=<config-path>
-      ${chalk.grey('A path to the the TS, JS or JSON config file.')}
-      ${chalk.grey('The default value is "unlinted.config.ts" in the Git project root,')}
-      ${chalk.grey('falls back to "unlinted.config.js", and then "unlinted.config.json"')}
+    Options:
+      --config=<config-path>
+        ${chalk.grey('A path to the the TS, JS or JSON config file.')}
+        ${chalk.grey('The default value is "unlinted.config.ts" in the Git project root,')}
+        ${chalk.grey('falls back to "unlinted.config.js", and then "unlinted.config.json"')}
 
-    --help
-    ${chalk.grey('Display this message')}
+      --help
+      ${chalk.grey('Display this message')}
 
 `;
 
@@ -40,20 +40,27 @@ export function formatCommandError(error: unknown): string {
       messages.push(`> ${failure}`);
     }
     return messages.join('\n');
+  } else if (error instanceof Error) {
+    return `Error: ${error.message}`;
   } else {
     return `Error: ${String(error)}`;
   }
 }
 
 /** Run unlinted as a command */
-export default async function command(argv: string[]) {
+export default async function command(
+  argv: string[],
+  deps = { log: console.log, currentDate, unlinted, reportResults, exitProcess },
+) {
   const { args, options } = argvParser(argv);
-  const startedAt = new Date();
+  const startedAt = deps.currentDate();
 
-  console.log('\n' + chalk.inverse(chalk.bold.cyan(' unlinted ')) + chalk.cyan(' version ' + packageData.version) + '\n');
+  deps.log('');
+  deps.log(chalk.inverse(chalk.bold.cyan(' unlinted ')) + chalk.cyan(' version ' + packageData.version));
+  deps.log('');
 
   if (options.help) {
-    console.log(COMMAND_HELP);
+    deps.log(COMMAND_HELP);
     return;
   }
 
@@ -63,14 +70,13 @@ export default async function command(argv: string[]) {
 
   const results = await ProgressManager.manage(
     process.stdout,
-    (progress) => unlinted(progress, args.length > 0 ? args[0] : undefined, typeof options.config === 'string' ? options.config : undefined),
+    (progress) => deps.unlinted(progress, args.length > 0 ? args[0] : undefined, typeof options.config === 'string' ? options.config : undefined),
   );
 
-
   const stats = getResultStats(results);
-  reportResults(results, stats, startedAt);
+  deps.reportResults(results, stats, startedAt);
 
   if (stats.files.failed > 0) {
-    process.exit(1);
+    deps.exitProcess(1);
   }
 }

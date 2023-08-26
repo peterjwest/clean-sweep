@@ -108,15 +108,18 @@ export type Failure = (
 );
 
 /** Describe how many lines are affected */
-function describeLines(lines: number[]) {
-  const lineTerm = `line${lines.length > 1 ? 's' : ''}`;
-  if (lines.length > 6) {
-    return `${lines.length} different ${lineTerm}`;
+export function describeLines(lineNumbers: number[]) {
+  if (lineNumbers.length === 0) throw new Error(`No line numbers passed, expected one or more`);
+  const lineTerm = `line${lineNumbers.length > 1 ? 's' : ''}`;
+  if (lineNumbers.length > 6) {
+    return `${lineNumbers.length} different ${lineTerm}`;
   }
-  return `${lineTerm} ${lines.join(', ')}`;
+  return `${lineTerm} ${lineNumbers.join(', ')}`;
 }
 
-function getCodePoint(character: string) {
+/** Gets the unicode code point for a character */
+export function getCodePoint(character: string) {
+  if (character.length !== 1) throw new Error(`Expected a single unicode character, got "${character}"`);
   return 'U+' + (character.codePointAt(0) as number).toString(16).toUpperCase().padStart(4, '0');
 }
 
@@ -140,4 +143,4 @@ export const FAILURE_MESSAGES = {
   UNEXPECTED_CHARACTER: (failure) => {
     return `Has a non-ASCII, non-unicode letter, non-emoji character "${failure.value}" ${getCodePoint(failure.value)} on ${describeLines(failure.lines)}`;
   },
-} as const satisfies { [Key in RuleName]: <Type extends Failure & { type: Key }>(failure: Type) => string };
+} as const satisfies { [Key in RuleName]: <Type extends Failure & { type: Key }>(failure: Omit<Type, 'type'>) => string };

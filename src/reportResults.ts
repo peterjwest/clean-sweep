@@ -1,10 +1,11 @@
 import chalk from 'chalk';
 
 import { FAILURE_MESSAGES, Failure } from './failures';
-import { toDateString, differenceInSeconds, Results, ResultStats } from './util';
+import { currentDate, toDateString, differenceInSeconds, Results, ResultStats } from './util';
 
-export default function reportResults(results: Results, stats: ResultStats, startedAt: Date) {
-  console.log('');
+/** Outputs results of analysis */
+export default function reportResults(results: Results, stats: ResultStats, startedAt: Date, deps = { log: console.log, currentDate }) {
+  deps.log('');
 
   for (const file in results) {
     // Non-null assertion since we're iterating over keys
@@ -13,24 +14,24 @@ export default function reportResults(results: Results, stats: ResultStats, star
     if (fileData.failures.length) {
       fileData.failures.sort((a, b) => ('line' in a ? a.line : 0) - ('line' in b ? b.line : 0));
 
-      console.log(chalk.red.bold('×'), file);
+      deps.log(chalk.red.bold('×'), file);
       for (const failure of fileData.failures) {
         const getMessage = FAILURE_MESSAGES[failure.type] as (failure: Failure) => string;
-        console.log(`${chalk.red(getMessage(failure))} ${chalk.grey('| ' + failure.type)}`);
+        deps.log(`${chalk.red(getMessage(failure))} ${chalk.grey('| ' + failure.type)}`);
       }
-      console.log('');
+      deps.log('');
     }
   }
 
-  console.log(chalk.inverse(stats.checks.failed > 0 ? chalk.bold.red(' Failure ') : chalk.bold.green(' Success ')));
+  deps.log(chalk.inverse(stats.checks.failed > 0 ? chalk.bold.red(' Failure ') : chalk.bold.green(' Success ')));
 
   const failedFiles = stats.files.failed > 0 ? `${chalk.red(`${stats.files.failed} failed`)} / ` : '';
-  console.log(chalk.grey(`Files checked  ${failedFiles}${chalk.green(`${stats.files.passed} passed`)}`));
+  deps.log(chalk.grey(`Files checked  ${failedFiles}${chalk.green(`${stats.files.passed} passed`)}`));
 
   const failedChecks = stats.checks.failed > 0 ? `${chalk.red(`${stats.checks.failed} failed`)} / ` : '';
-  console.log(chalk.grey(`Checks         ${failedChecks}${chalk.green(`${stats.checks.passed} passed`)}`));
+  deps.log(chalk.grey(`Checks         ${failedChecks}${chalk.green(`${stats.checks.passed} passed`)}`));
 
-  console.log(chalk.grey(`Started at     ${toDateString(startedAt)}`));
-  console.log(chalk.grey(`Duration       ${differenceInSeconds(startedAt, new Date())} seconds`));
-  console.log('');
+  deps.log(chalk.grey(`Started at     ${toDateString(startedAt)}`));
+  deps.log(chalk.grey(`Duration       ${differenceInSeconds(startedAt, deps.currentDate())} seconds`));
+  deps.log('');
 }

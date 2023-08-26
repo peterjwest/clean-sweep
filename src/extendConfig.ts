@@ -1,6 +1,4 @@
-import lodash from 'lodash';
-
-import { GenericRulesetConfig, RuleConfig, Config, ExtendConfig, ExtendedConfig } from './config';
+import { RuleConfig, Config, ExtendRuleset, ExtendRules, ExtendedConfig, ExtendRule, Rulesets } from './config';
 import GitignoreMatcher from './GitignoreMatcher';
 
 /**
@@ -8,16 +6,15 @@ import GitignoreMatcher from './GitignoreMatcher';
  * @var ruleset - The ruleset config to be extended
  * @var parentMatcher - The matcher for the parent config, to inherit exclusion rules
  */
-function extendRuleset(ruleset: GenericRulesetConfig, parentMatcher: GitignoreMatcher): ExtendConfig<GenericRulesetConfig> {
+export function extendRuleset<Ruleset extends Rulesets>(ruleset: Ruleset, parentMatcher: GitignoreMatcher): ExtendRuleset<Ruleset> {
   const matcher = parentMatcher.extend(ruleset.exclude);
-
-  const rules = lodash.mapValues(ruleset.rules, (rule) => {
-    return 'rules' in rule ? extendRuleset(rule, matcher) : extendRules(rule, matcher);
-  });
+  const rules = Object.fromEntries(Object.entries(ruleset.rules).map(([name, rule]: [string, Rulesets | RuleConfig]) => {
+    return [name, rule.rules ? extendRuleset(rule, matcher) : extendRule(rule, matcher)];
+  })) as ExtendRules<Ruleset['rules']>;
 
   return {
     ...ruleset,
-    rules,
+    rules: rules,
     filterFiles: (filePaths: string[]) => ruleset.enabled ? matcher.filter(filePaths) : [],
     enabledFor: (filePath: string) => ruleset.enabled && matcher.matches(filePath),
   };
@@ -28,17 +25,17 @@ function extendRuleset(ruleset: GenericRulesetConfig, parentMatcher: GitignoreMa
  * @var rule - The rule config to be extended
  * @var parentMatcher - The matcher for the parent config, to inherit exclusion rules
  */
-function extendRules(rule: RuleConfig, parentMatcher: GitignoreMatcher): ExtendConfig<RuleConfig> {
+export function extendRule(rule: RuleConfig, parentMatcher: GitignoreMatcher): ExtendRule<RuleConfig> {
   const matcher = parentMatcher.extend(rule.exclude);
   return {
     ...rule,
     filterFiles: (filePaths: string[]) => rule.enabled ? matcher.filter(filePaths) : [],
     enabledFor: (filePath: string) => rule.enabled && matcher.matches(filePath),
+    rules: undefined,
   };
 }
 
 /** Extends a config to include utility functions */
 export default function extendConfig(config: Config): ExtendedConfig {
-  // Cast here as we transition from generic back to specific rules
-  return extendRuleset(config, new GitignoreMatcher([])) as ExtendedConfig;
+  return extendRuleset(config, new GitignoreMatcher([]));
 }
