@@ -1,7 +1,8 @@
 import { describe, test } from 'vitest';
 import assert from 'assert';
 
-import { UserConfig, DEFAULT_CONFIG } from './config';
+import { DEFAULT_CONTENT_EXCLUDED } from './constants';
+import { Config, UserConfig, DEFAULT_CONFIG } from './config';
 import combineConfig from './combineConfig';
 
 describe('combineConfig', () => {
@@ -48,16 +49,17 @@ describe('combineConfig', () => {
   test('Returns a config various changes to rules and rulesets', () => {
     const userConfig: UserConfig = {
       enabled: true,
-      exclude: ['foo.txt'],
+      exclude: () => ['foo.txt'],
       rules: {
         PATH_VALIDATION: undefined,
         CONTENT_VALIDATION: {
           enabled: true,
-          exclude: ['bar.zip', 'gir.ts'],
+          exclude: (defaults) => [...defaults.slice(0, 1), 'bar.zip', 'gir.ts'],
           rules: {
             UNEXPECTED_ENCODING: undefined,
             MALFORMED_ENCODING: {
               enabled: true,
+              exclude: ['zip.txt'],
             },
             UNEXPECTED_CHARACTER: {
               enabled: false,
@@ -66,12 +68,13 @@ describe('combineConfig', () => {
             },
             UTF8_VALIDATION: {
               enabled: false,
+              exclude: ['zig.txt'],
               rules: {
                 INVALID_BYTE: false,
                 INVALID_CODE_POINT: true,
                 OVERLONG_BYTE_SEQUENCE: {
                   enabled: undefined,
-                  exclude: ['zim.js'],
+                  exclude: () => ['zim.js'],
                 },
               },
             },
@@ -80,7 +83,7 @@ describe('combineConfig', () => {
       },
     };
 
-    assert.deepStrictEqual(combineConfig(DEFAULT_CONFIG, userConfig), {
+    const expected: Config = {
       enabled: true,
       exclude: ['foo.txt'],
       rules: {
@@ -95,9 +98,9 @@ describe('combineConfig', () => {
         },
         CONTENT_VALIDATION: {
           enabled: true,
-          exclude: ['bar.zip', 'gir.ts'],
+          exclude: [DEFAULT_CONTENT_EXCLUDED[0], 'bar.zip', 'gir.ts'],
           rules: {
-            MALFORMED_ENCODING: { enabled: true, exclude: [] },
+            MALFORMED_ENCODING: { enabled: true, exclude: ['zip.txt'] },
             UNEXPECTED_ENCODING: { enabled: true, exclude: [] },
             CARRIAGE_RETURN: { enabled: true, exclude: [] },
             TAB: { enabled: true, exclude: [] },
@@ -107,7 +110,7 @@ describe('combineConfig', () => {
             UNEXPECTED_CHARACTER: { enabled: false, exclude: [], allowed: ['✓'] },
             UTF8_VALIDATION: {
               enabled: false,
-              exclude: [],
+              exclude: ['zig.txt'],
               rules: {
                 INVALID_BYTE: { enabled: false, exclude: [] },
                 UNEXPECTED_CONTINUATION_BYTE: { enabled: true, exclude: [] },
@@ -119,6 +122,8 @@ describe('combineConfig', () => {
           },
         },
       },
-    });
+    };
+
+    assert.deepStrictEqual(combineConfig(DEFAULT_CONFIG, userConfig), expected);
   });
 });

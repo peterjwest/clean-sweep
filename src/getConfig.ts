@@ -41,9 +41,7 @@ export default async function getConfig(
   const configModule: unknown = configPath ? await deps.importModule(configPath) : undefined;
 
   // Unwrap default export if it exists
-  const configEntity = configModule && typeof configModule === 'object' && 'default' in configModule ? configModule.default : configModule;
-  // If the config is a function, run it with the default config
-  const configObject: unknown = typeof configEntity === 'function' ? configEntity(DEFAULT_CONFIG) : configEntity;
+  const configObject = configModule && typeof configModule === 'object' && 'default' in configModule ? configModule.default : configModule;
   // Parse with zod to ensure the type is correct
   const userConfig: UserConfig | undefined = configObject ? parseConfig(configObject) : undefined;
   const config = userConfig ? combineConfig(DEFAULT_CONFIG, userConfig) : DEFAULT_CONFIG;

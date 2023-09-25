@@ -40,6 +40,17 @@ export function createEnumNumeric<const T extends readonly string[]>(arr: T): Ex
   return Object.fromEntries(arr.map((value, index) => [value, index])) as Expand<InvertTuple<T>>;
 }
 
+/** Gets the line number of an index in a string */
+export function getLineNumber(text: string, index: number): number {
+  if (index < 0 || index >= text.length) throw new Error(`Index ${index} out of range`);
+
+  const match = text.slice(0, index + 1).match(/\r\n|\r|\n/g);
+  const newlines = match ? match.length : 0;
+
+  // If the current character is a newline, count as part of the previous line
+  return text[index]?.match(/[\r\n]/) ? newlines : newlines + 1;
+}
+
 /** Wrapper function for process.cwd, makes dependency injection simpler */
 export function currentDirectory(deps = { process }) {
   return deps.process.cwd();

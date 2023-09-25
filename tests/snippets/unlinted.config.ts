@@ -1,14 +1,12 @@
-import { Config, UserConfig } from 'unlinted';
+import { UserConfig } from 'unlinted';
 
-export default function config(defaultConfig: Config): UserConfig {
-  return {
-    exclude: [...defaultConfig.exclude, 'example.txt'],
-    rules: {
-      PATH_VALIDATION: {
-        rules: {
-          DS_STORE: false,
-        },
+export default {
+  exclude: (defaults) => [...defaults, 'example.txt'],
+  rules: {
+    PATH_VALIDATION: {
+      rules: {
+        DS_STORE: false,
       },
     },
-  };
-}
+  },
+} satisfies UserConfig;

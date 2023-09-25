@@ -1,11 +1,12 @@
 import lodash from 'lodash';
 
+import { RULES } from './rules';
 import { createEnumNumeric, delay, FileResult } from './util';
 import { Failure } from './failures';
 import { ExtendedUtf8Config } from './config';
 
 /** Types of UTF8 byte */
-const BYTE_TYPE = createEnumNumeric([
+export const BYTE_TYPE = createEnumNumeric([
   'INVALID',
   'LEADING_FOUR_BYTE',
   'LEADING_THREE_BYTE',
@@ -16,6 +17,9 @@ const BYTE_TYPE = createEnumNumeric([
 
 /** Union of different byte types */
 type ByteType = (typeof BYTE_TYPE)[keyof typeof BYTE_TYPE];
+
+/** Valid sequences of UTF8 bytes */
+export type ByteSequence = [number] | [number, number] | [number, number, number] | [number, number, number, number];
 
 /** Expected number of bytes for each type */
 const BYTE_TYPE_COUNT = {
@@ -59,7 +63,8 @@ const OVERLONG_RANGES = [
 ] as const;
 
 /** Gets the type of a UTF8 byte */
-function getByteType(value: number): ByteType {
+export function getByteType(value: number): ByteType {
+  if (value < 0 || value > 0xFF) throw new Error(`Invalid byte value ${serialiseBytes([value])}`);
   if (value >= 0xF8) return BYTE_TYPE.INVALID;
   if (value >= 0xF0) return BYTE_TYPE.LEADING_FOUR_BYTE;
   if (value >= 0xE0) return BYTE_TYPE.LEADING_THREE_BYTE;
@@ -68,48 +73,51 @@ function getByteType(value: number): ByteType {
   return BYTE_TYPE.ASCII;
 }
 
-type ByteSequence = [number] | [number, number] | [number, number, number] | [number, number, number, number];
-
-/** Gets the UTF8 byte sequence for a character */
-function getBytes(data: Buffer, index: number, byteCount: 1 | 2 | 3 | 4): ByteSequence {
+/** Gets the UTF8 byte sequence for a character from a Buffer */
+export function getBytes(data: Buffer, index: number, byteCount: 1 | 2 | 3 | 4): ByteSequence {
+  if (index < 0 || index + byteCount > data.length) {
+    throw new Error(`Byte sequence length ${byteCount} at index ${index} is out of range`);
+  }
   return Array.from(data.subarray(index, index + byteCount)) as ByteSequence;
 }
 
 /** Combines a byte sequence into a single value */
-function combineBytes(bytes: ByteSequence): number {
+export function combineBytes(bytes: ByteSequence): number {
   let value = bytes[0];
   for (const byte of bytes.slice(1)) {
-    value = (value << 8) + byte;
+    value = (value * 256) + byte;
   }
   return value;
 }
 
 /** Gets a unicode code point from a UTF8 byte sequence */
-function getCodePoint(bytes: ByteSequence) {
+export function getCodePoint(bytes: ByteSequence) {
   let value = bytes[0] - LEADING_BYTE_OFFSETS[bytes.length];
   for (const byte of bytes.slice(1)) {
-    value = (value << 6) + byte - 0x80;
+    value = (value * 64) + byte - 0x80;
   }
   return value;
 }
 
 /** Serialise a list of bytes in hexadecimal */
-function serialiseBytes(values: Buffer | number[]) {
-  return Array.from(values).map((value) => `0x${value.toString(16).toUpperCase()}`).join(' ');
+export function serialiseBytes(values: Buffer | number[]) {
+  return Array.from(values).map((value) =>{
+    return `${value < 0 ? '-' : ''}0x${Math.abs(value).toString(16).toUpperCase().padStart(2, '0')}`;
+  }).join(' ');
 }
 
 /** Serialise a code point */
-function serialiseCodePoint(value: number) {
-  return 'U+' + value.toString(16).toUpperCase();
+export function serialiseCodePoint(value: number) {
+  return 'U+' + value.toString(16).toUpperCase().padStart(4, '0');
 }
 
 /** Validates a unicode code point, returns an array of failures */
-function validateCodePoint(codePoint: number, lineNumber: number): Failure[] {
+export function validateCodePoint(codePoint: number, lineNumber: number): Failure[] {
   const failures: Failure[] = [];
 
   if (codePoint > 0x10FFFF) {
     failures.push({
-      type: 'INVALID_CODE_POINT',
+      type: RULES.INVALID_CODE_POINT,
       value: serialiseCodePoint(codePoint),
       line: lineNumber,
     });
@@ -118,7 +126,7 @@ function validateCodePoint(codePoint: number, lineNumber: number): Failure[] {
   for (const [lower, upper] of INVALID_CODE_POINT_RANGES) {
     if (codePoint >= lower && codePoint <= upper) {
       failures.push({
-        type: 'INVALID_CODE_POINT',
+        type: RULES.INVALID_CODE_POINT,
         value: serialiseCodePoint(codePoint),
         line: lineNumber,
       });
@@ -129,17 +137,16 @@ function validateCodePoint(codePoint: number, lineNumber: number): Failure[] {
 }
 
 /** Gets the line number for an index in a buffer */
-function getLineBufferNumber(buffer: Buffer, index: number): number {
+export function getLineNumber(buffer: Buffer, index: number): number {
+  if (index < 0 || index >= buffer.length) throw new Error(`Index ${index} out of range`);
   let line = 1;
   for (let i = 0; i < index; i++) {
     if (buffer[i] === 0xA) {
       line++;
     }
     if (buffer[i] === 0xD) {
-      // A line feed after a carriage return counts as part of the same newline
-      if (buffer[i + 1] === 0xA) {
-        i++;
-      }
+      // A line feed following a carriage return counts as part of the same newline, so ignore the carriage return
+      if (buffer[i + 1] === 0xA) continue;
       line++;
     }
   }
@@ -169,9 +176,9 @@ export default async function validateUtf8(filePath: string, data: Buffer, confi
     if (type === BYTE_TYPE.INVALID) {
       if (isEnabled.INVALID_BYTE) {
         result.failures.push({
-          type: 'INVALID_BYTE',
+          type: RULES.INVALID_BYTE,
           value: serialiseBytes([byte]),
-          line: getLineBufferNumber(data, i),
+          line: getLineNumber(data, i),
         });
       }
       continue;
@@ -180,9 +187,9 @@ export default async function validateUtf8(filePath: string, data: Buffer, confi
     if (type === BYTE_TYPE.CONTINUATION) {
       if (isEnabled.UNEXPECTED_CONTINUATION_BYTE) {
         result.failures.push({
-          type: 'UNEXPECTED_CONTINUATION_BYTE',
+          type: RULES.UNEXPECTED_CONTINUATION_BYTE,
           value: serialiseBytes([byte]),
-          line: getLineBufferNumber(data, i),
+          line: getLineNumber(data, i),
         });
       }
       continue;
@@ -197,12 +204,12 @@ export default async function validateUtf8(filePath: string, data: Buffer, confi
         i++;
       }
       else {
-        if (config.rules.MISSING_CONTINUATION_BYTE.enabledFor(filePath)) {
+        if (isEnabled.MISSING_CONTINUATION_BYTE) {
           result.failures.push({
-            type: 'MISSING_CONTINUATION_BYTE',
+            type: RULES.MISSING_CONTINUATION_BYTE,
             expectedBytes: byteCount,
             value: serialiseBytes(getBytes(data, startIndex, 1)),
-            line: getLineBufferNumber(data, startIndex),
+            line: getLineNumber(data, startIndex),
           });
         }
         continue;
@@ -217,10 +224,10 @@ export default async function validateUtf8(filePath: string, data: Buffer, confi
       else {
         if (isEnabled.MISSING_CONTINUATION_BYTE) {
           result.failures.push({
-            type: 'MISSING_CONTINUATION_BYTE',
+            type: RULES.MISSING_CONTINUATION_BYTE,
             expectedBytes: byteCount,
             value: serialiseBytes(getBytes(data, startIndex, 2)),
-            line: getLineBufferNumber(data, startIndex),
+            line: getLineNumber(data, startIndex),
           });
         }
         continue;
@@ -235,10 +242,10 @@ export default async function validateUtf8(filePath: string, data: Buffer, confi
       else {
         if (isEnabled.MISSING_CONTINUATION_BYTE) {
           result.failures.push({
-            type: 'MISSING_CONTINUATION_BYTE',
+            type: RULES.MISSING_CONTINUATION_BYTE,
             expectedBytes: byteCount,
             value: serialiseBytes(getBytes(data, startIndex, 3)),
-            line: getLineBufferNumber(data, startIndex),
+            line: getLineNumber(data, startIndex),
           });
         }
         continue;
@@ -252,9 +259,9 @@ export default async function validateUtf8(filePath: string, data: Buffer, confi
       for (const [lower, upper] of OVERLONG_RANGES) {
         if (utf8Value >= lower && utf8Value <= upper) {
           result.failures.push({
-            type: 'OVERLONG_BYTE_SEQUENCE',
+            type: RULES.OVERLONG_BYTE_SEQUENCE,
             value: serialiseBytes(bytes),
-            line: getLineBufferNumber(data, startIndex),
+            line: getLineNumber(data, startIndex),
           });
         }
       }
@@ -262,7 +269,7 @@ export default async function validateUtf8(filePath: string, data: Buffer, confi
 
     if (isEnabled.INVALID_CODE_POINT) {
       const bytes = getBytes(data, startIndex, byteCount);
-      result.addFailures(validateCodePoint(getCodePoint(bytes), getLineBufferNumber(data, startIndex)));
+      result.addFailures(validateCodePoint(getCodePoint(bytes), getLineNumber(data, startIndex)));
     }
   }
 

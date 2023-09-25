@@ -9,6 +9,7 @@ import z from 'zod';
 import {
   createEnum,
   createEnumNumeric,
+  getLineNumber,
   currentDirectory,
   exitProcess,
   getZodErrors,
@@ -68,6 +69,30 @@ describe('createEnumNumeric', () => {
 
   test('Converts an empty array to an empty object', () => {
     assert.deepStrictEqual(createEnumNumeric([]), {});
+  });
+});
+
+describe('getLineNumber', () => {
+  test('Returns the line number for an index in a string', () => {
+    const value = 'foo\n😅\n\nあ\r\r\n©\n\r\rbar';
+
+    assert.strictEqual(getLineNumber(value, 0), 1);
+    assert.strictEqual(getLineNumber(value, 3), 1); // Newlines considered part of the preceeding line
+    assert.strictEqual(getLineNumber(value, 4), 2); // Start of 😅
+    assert.strictEqual(getLineNumber(value, 5), 2); // End of 😅
+    assert.strictEqual(getLineNumber(value, 8), 4); // あ
+    assert.strictEqual(getLineNumber(value, 10), 5); // Newlines considered part of the preceeding line
+    assert.strictEqual(getLineNumber(value, 11), 5); // Newlines considered part of the preceeding line
+    assert.strictEqual(getLineNumber(value, 13), 6); // ©
+    assert.strictEqual(getLineNumber(value, 14), 7); // Newlines considered part of the preceeding line
+    assert.strictEqual(getLineNumber(value, 16), 9);
+  });
+
+  test('Throws an error if the index is not in the buffer', () => {
+    const value = 'abc';
+
+    assert.throws(() => getLineNumber(value, -1), new Error('Index -1 out of range'));
+    assert.throws(() => getLineNumber(value, 3), new Error('Index 3 out of range'));
   });
 });
 

@@ -1,88 +1,88 @@
-import { RuleName } from './rules';
+import { RuleName, RULES } from './rules';
 
 interface SomeFailure { type: RuleName }
 
 interface DsStoreFailure extends SomeFailure {
-  type: 'DS_STORE';
+  type: typeof RULES.DS_STORE;
 }
 
 interface UppercaseExtensionFailure extends SomeFailure {
-  type: 'UPPERCASE_EXTENSION';
+  type: typeof RULES.UPPERCASE_EXTENSION;
 }
 
 interface IgnoredCommittedFileFailure extends SomeFailure {
-  type: 'IGNORED_COMMITTED_FILE';
+  type: typeof RULES.IGNORED_COMMITTED_FILE;
 }
 
 interface InvalidByteFailure extends SomeFailure {
-  type: 'INVALID_BYTE';
+  type: typeof RULES.INVALID_BYTE;
   value: string;
   line: number;
 }
 
 interface UnexpectedContinuationByteFailure extends SomeFailure {
-  type: 'UNEXPECTED_CONTINUATION_BYTE';
+  type: typeof RULES.UNEXPECTED_CONTINUATION_BYTE;
   value: string;
   line: number;
 }
 
 interface MissingContinuationByteFailure extends SomeFailure {
-  type: 'MISSING_CONTINUATION_BYTE';
+  type: typeof RULES.MISSING_CONTINUATION_BYTE;
   expectedBytes: number;
   value: string;
   line: number;
 }
 
 interface OverlongByteSequenceFailure extends SomeFailure {
-  type: 'OVERLONG_BYTE_SEQUENCE';
+  type: typeof RULES.OVERLONG_BYTE_SEQUENCE;
   value: string;
   line: number;
 }
 
 interface InvalidCodePointFailure extends SomeFailure {
-  type: 'INVALID_CODE_POINT';
+  type: typeof RULES.INVALID_CODE_POINT;
   value: string;
   line: number;
 }
 
 interface MalformedEncodingFailure extends SomeFailure {
-  type: 'MALFORMED_ENCODING';
-  guessedEncoding: string;
+  type: typeof RULES.MALFORMED_ENCODING;
+  guessedEncoding: string | undefined;
   confidence: number;
 }
 
 interface UnexpectedEncodingFailure extends SomeFailure {
-  type: 'UNEXPECTED_ENCODING';
+  type: typeof RULES.UNEXPECTED_ENCODING;
   encoding: string;
 }
 
 interface CarriageReturnFailure extends SomeFailure {
-  type: 'CARRIAGE_RETURN';
+  type: typeof RULES.CARRIAGE_RETURN;
   line: number;
 }
 
 interface TabFailure extends SomeFailure {
-  type: 'TAB';
+  type: typeof RULES.TAB;
   lines: number[];
 }
 
 interface TrailingWhitespaceFailure extends SomeFailure {
-  type: 'TRAILING_WHITESPACE';
+  type: typeof RULES.TRAILING_WHITESPACE;
   lines: number[];
 }
 
 interface MultipleFinalNewlinesFailure extends SomeFailure {
-  type: 'MULTIPLE_FINAL_NEWLINES';
+  type: typeof RULES.MULTIPLE_FINAL_NEWLINES;
   line: number;
 }
 
 interface NoFinalNewlineFailure extends SomeFailure {
-  type: 'NO_FINAL_NEWLINE';
+  type: typeof RULES.NO_FINAL_NEWLINE;
   line: number;
 }
 
 interface UnexpectedCharacterFailure extends SomeFailure {
-  type: 'UNEXPECTED_CHARACTER';
+  type: typeof RULES.UNEXPECTED_CHARACTER;
   value: string;
   lines: number[];
 }

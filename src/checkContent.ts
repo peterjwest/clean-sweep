@@ -3,13 +3,7 @@ import lodash from 'lodash';
 
 import { RULES } from './rules';
 import { ExtendedContentConfig } from './config';
-import { FileResult } from './util';
-
-/** Gets the line number of an index in a string */
-function getLineNumber(text: string, index: number): number {
-  const match = text.slice(0, index).match(/\r\n|\r|\n/g);
-  return (match ? match.length : 0) + 1;
-}
+import { getLineNumber, FileResult } from './util';
 
 /** Runs checks on file contents */
 export default function checkContent(filePath: string, data: Buffer, config: ExtendedContentConfig): FileResult {
@@ -22,7 +16,7 @@ export default function checkContent(filePath: string, data: Buffer, config: Ext
     if (charset.confidence < 0.95) {
       result.failures.push({
         type: RULES.MALFORMED_ENCODING,
-        guessedEncoding: charset.encoding,
+        guessedEncoding: charset.encoding || undefined,
         confidence: charset.confidence,
       });
       // If we can't determine the encoding, don't analyse any further
@@ -116,7 +110,7 @@ export default function checkContent(filePath: string, data: Buffer, config: Ext
 
     const allowed = config.rules.UNEXPECTED_CHARACTER.allowed;
     const unexpectedCharacters = (
-      Array.from(content.matchAll(/[^\n\t\r\x20-\xFF\p{L}\p{M}\p{Extended_Pictographic}]/ug))
+      Array.from(content.matchAll(/[^\n\t\r\x20-\x7F\p{L}\p{M}\p{Extended_Pictographic}]/ug))
       .filter((match) => !allowed.includes(match[0]))
     );
 

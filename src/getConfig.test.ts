@@ -3,7 +3,7 @@ import assert from 'assert';
 import sinon from 'sinon';
 import assertStub from 'sinon-assert-stub';
 
-import { DEFAULT_CONFIG, Config, UserConfig } from './config';
+import { DEFAULT_CONFIG, UserConfig } from './config';
 import { ErrorWithFailures } from './util';
 import combineConfig from './combineConfig';
 import getConfig, { getConfigPath, parseConfig } from './getConfig';
@@ -32,9 +32,9 @@ describe('getConfig', () => {
 
   test('Resolves with a user config and path', async () => {
     const userConfig: UserConfig = {
-      exclude: [],
+      exclude: () => [],
       rules: {
-        PATH_VALIDATION: { enabled: true, exclude: ['x'] },
+        PATH_VALIDATION: { enabled: true, exclude: () => ['x'] },
         CONTENT_VALIDATION: {
           rules: { TRAILING_WHITESPACE: false },
         },
@@ -52,9 +52,9 @@ describe('getConfig', () => {
 
   test('Resolves with a user config from an ES module ', async () => {
     const userConfig: UserConfig = {
-      exclude: [],
+      exclude: () => [],
       rules: {
-        PATH_VALIDATION: { enabled: true, exclude: ['x'] },
+        PATH_VALIDATION: { enabled: true, exclude: () => ['x'] },
         CONTENT_VALIDATION: {
           rules: { TRAILING_WHITESPACE: false },
         },
@@ -67,48 +67,6 @@ describe('getConfig', () => {
     assert.deepStrictEqual(
       await getConfig('/foo/bar/zim', undefined, { getConfigPath, importModule }),
       [combineConfig(DEFAULT_CONFIG, userConfig), '/foo/bar/unlinted.config.ts'],
-    );
-  });
-
-  test('Resolves with a user config from a function', async () => {
-    function getUserConfig(defaultConfig: Config): UserConfig {
-      return {
-        exclude: [],
-        rules: {
-          CONTENT_VALIDATION: {
-            exclude: [...defaultConfig.rules.CONTENT_VALIDATION.exclude, '.banana'],
-          },
-        },
-      };
-    }
-
-    const getConfigPath = sinon.stub().resolves('/foo/bar/unlinted.config.ts');
-    const importModule = sinon.stub().resolves(getUserConfig);
-
-    assert.deepStrictEqual(
-      await getConfig('/foo/bar/zim', undefined, { getConfigPath, importModule }),
-      [combineConfig(DEFAULT_CONFIG, getUserConfig(DEFAULT_CONFIG)), '/foo/bar/unlinted.config.ts'],
-    );
-  });
-
-  test('Resolves with a user config from a function in an ES module ', async () => {
-    function getUserConfig(defaultConfig: Config): UserConfig {
-      return {
-        exclude: [],
-        rules: {
-          CONTENT_VALIDATION: {
-            exclude: [...defaultConfig.rules.CONTENT_VALIDATION.exclude, '.banana'],
-          },
-        },
-      };
-    }
-
-    const getConfigPath = sinon.stub().resolves('/foo/bar/unlinted.config.ts');
-    const importModule = sinon.stub().resolves({ default: getUserConfig });
-
-    assert.deepStrictEqual(
-      await getConfig('/foo/bar/zim', undefined, { getConfigPath, importModule }),
-      [combineConfig(DEFAULT_CONFIG, getUserConfig(DEFAULT_CONFIG)), '/foo/bar/unlinted.config.ts'],
     );
   });
 
@@ -231,7 +189,7 @@ describe('parseConfig', () => {
     assert.deepStrictEqual(parseConfig(userConfig), {});
   });
 
-  test('Parses a sparse config correclty', () => {
+  test('Parses a sparse config correctly', () => {
     const userConfig: UserConfig = {
       exclude: [],
       rules: {
@@ -262,7 +220,7 @@ describe('parseConfig', () => {
 
   test('Fails to parse an invalid config', () => {
     const userConfig: unknown = {
-      exclude: [],
+      exclude: () => [],
       rules: {
         PATH_VALIDATION: {
           enabled: true,
@@ -273,7 +231,7 @@ describe('parseConfig', () => {
         },
         CONTENT_VALIDATION: {
           rules: {
-            MALFORMED_ENCODING: { exclude: [3] },
+            MALFORMED_ENCODING: { exclude: () => [3] },
             FAKE_RULE: true,
           },
         },
@@ -282,8 +240,7 @@ describe('parseConfig', () => {
 
     assert.throws(() => parseConfig(userConfig), new ErrorWithFailures('Config invalid', [
       `Unrecognized key(s) in object: 'banana' at "rules.PATH_VALIDATION"`,
-      'Expected string, received number at "rules.CONTENT_VALIDATION.rules.MALFORMED_ENCODING.exclude[0]", or Expected boolean, received object at "rules.CONTENT_VALIDATION.rules.MALFORMED_ENCODING"',
-      `Unrecognized key(s) in object: 'FAKE_RULE' at "rules.CONTENT_VALIDATION.rules", or Expected boolean, received object at "rules.CONTENT_VALIDATION"`,
+      `Unrecognized key(s) in object: 'FAKE_RULE' at "rules.CONTENT_VALIDATION.rules"`,
     ]));
   });
 

@@ -1,31 +1,33 @@
 import { z } from "zod";
 
+import GitignoreMatcher from './GitignoreMatcher';
 import { DEFAULT_CONTENT_EXCLUDED } from './constants';
 import { ExpandRecursive } from './util';
 import { RULES, RULESETS } from './rules';
 
 export type PlainConfigKey = 'exclude' | 'enabled' | 'allowed';
-export type HelperKey = 'enabledFor' | 'filterFiles';
 
 /** Helper type to extend a ruleset with utility functions */
-export type ExtendRuleset<T extends Rulesets> = (T & {
-  rules: ExtendRules<T['rules']>;
-  enabledFor: (filePath: string) => boolean;
-  filterFiles: (filePaths: string[]) => string[];
-});
+export type ExtendRuleset<Ruleset extends AnyRuleset> = Ruleset & {
+  rules: ExtendRules<Ruleset>;
+  matcher: GitignoreMatcher;
+  enabledFor: (this: { enabled: boolean; matcher: GitignoreMatcher }, filePath: string) => boolean;
+  filterFiles: (this: { enabled: boolean; matcher: GitignoreMatcher }, filePaths: string[]) => string[];
+};
 
 /** Helper type to extend a rule with utility functions */
-export type ExtendRule<T> = {
-  [P in keyof T | HelperKey]: (
-    (P extends keyof T ? T[P] :
-      (P extends 'enabledFor' ? (filePath: string) => boolean : (filePaths: string[]) => string[])
-    )
-  );
+export type ExtendRule<Rule> = Rule & {
+  matcher: GitignoreMatcher;
+  enabledFor: (this: { enabled: boolean; matcher: GitignoreMatcher }, filePath: string) => boolean;
+  filterFiles: (this: { enabled: boolean; matcher: GitignoreMatcher }, filePaths: string[]) => string[];
 };
 
 /** Helper type to extend a rules object with utility functions */
-export type ExtendRules<T extends Rulesets['rules']> = {
-  [P in keyof T]: (T[P] extends Rulesets ? ExtendRuleset<T[P]> : ExtendRule<T[P]>);
+export type ExtendRules<Ruleset extends AnyRuleset> = {
+  [Property in keyof Ruleset['rules']]: (
+    Ruleset['rules'][Property] extends AnyRuleset ? ExtendRuleset<Ruleset['rules'][Property]> :
+    ExtendRule<Ruleset['rules'][Property]>
+  );
 };
 
 export const RuleConfig = z.object({
@@ -48,14 +50,6 @@ export function createRules<RulesType extends z.ZodRawShape>(rules: RulesType): 
     }
   }
   return { rules: z.object(rules).strict() };
-}
-
-function partialRules<RulesType extends z.ZodRawShape>({ rules }: { rules: z.ZodObject<RulesType> }) {
-  return { rules: rules.partial() };
-}
-
-function createPartialRule<Type extends z.ZodRawShape>(rule: z.ZodObject<Type>) {
-  return z.union([rule.partial(), z.boolean()]);
 }
 
 const Config = RulesetConfig.extend(createRules({
@@ -90,42 +84,67 @@ export type Config = ExpandRecursive<z.infer<typeof Config>>;
 export type PathRuleset = Config['rules']['PATH_VALIDATION'];
 export type ContentRuleset = Config['rules']['CONTENT_VALIDATION'];
 export type Utf8Ruleset = ContentRuleset['rules']['UTF8_VALIDATION'];
-export type Rulesets = Config | PathRuleset | ContentRuleset | Utf8Ruleset;
+export type AnyRuleset = Config | PathRuleset | ContentRuleset | Utf8Ruleset;
 
 export type ExtendedConfig = ExtendRuleset<Config>;
 export type ExtendedPathConfig = ExtendedConfig['rules']['PATH_VALIDATION'];
 export type ExtendedContentConfig = ExtendedConfig['rules']['CONTENT_VALIDATION'];
 export type ExtendedUtf8Config = ExtendedContentConfig['rules']['UTF8_VALIDATION'];
 
-const PartialRuleConfig = createPartialRule(RuleConfig);
+function partialRules<RulesType extends z.ZodRawShape>({ rules }: { rules: z.ZodObject<RulesType> }) {
+  return { rules: rules.partial().optional() };
+}
 
-export const UserConfig = RulesetConfig.extend(partialRules(createRules({
-  PATH_VALIDATION: createPartialRule(
-    RulesetConfig.extend(partialRules(createRules({
-      DS_STORE: PartialRuleConfig,
-      UPPERCASE_EXTENSION: PartialRuleConfig,
-      IGNORED_COMMITTED_FILE: PartialRuleConfig,
+function ruleOrBoolean<Type extends z.ZodRawShape>(rule: z.ZodObject<Type>) {
+  return z.union([rule, z.boolean()]);
+}
+
+/** This is messy because Zod cannot create a Function type with a readonly argument */
+export type ExcludeFunction = (defaults: readonly string[]) => readonly string[];
+export const ExcludeFunction = (
+  z.function()
+  .args(z.array(z.string()).readonly())
+  .returns(z.array(z.string()).readonly())
+) as unknown as z.ZodType<ExcludeFunction>;
+
+export const PartialRuleConfig = z.object({
+  enabled: z.boolean(),
+  exclude: z.union([z.array(z.string()).readonly(), ExcludeFunction]),
+  rules: z.undefined().optional(),
+}).strict().partial();
+
+export const PartialRulesetConfig = z.object({
+  enabled: z.boolean(),
+  exclude: z.union([z.array(z.string()).readonly(), ExcludeFunction]),
+}).strict().partial();
+
+export const UserConfig = PartialRulesetConfig.extend(partialRules(createRules({
+  PATH_VALIDATION: ruleOrBoolean(
+    PartialRulesetConfig.extend(partialRules(createRules({
+      DS_STORE: ruleOrBoolean(PartialRuleConfig),
+      UPPERCASE_EXTENSION: ruleOrBoolean(PartialRuleConfig),
+      IGNORED_COMMITTED_FILE: ruleOrBoolean(PartialRuleConfig),
     }))),
   ),
-  CONTENT_VALIDATION: createPartialRule(
-    RulesetConfig.extend(partialRules(createRules({
-      MALFORMED_ENCODING: PartialRuleConfig,
-      UNEXPECTED_ENCODING: PartialRuleConfig,
-      CARRIAGE_RETURN: PartialRuleConfig,
-      TAB: PartialRuleConfig,
-      TRAILING_WHITESPACE: PartialRuleConfig,
-      MULTIPLE_FINAL_NEWLINES: PartialRuleConfig,
-      NO_FINAL_NEWLINE: createPartialRule(RuleConfig),
-      UNEXPECTED_CHARACTER: createPartialRule(
-        RuleConfig.extend({ allowed: z.array(z.string()).readonly() }),
+  CONTENT_VALIDATION: ruleOrBoolean(
+    PartialRulesetConfig.extend(partialRules(createRules({
+      MALFORMED_ENCODING: ruleOrBoolean(PartialRuleConfig),
+      UNEXPECTED_ENCODING: ruleOrBoolean(PartialRuleConfig),
+      CARRIAGE_RETURN: ruleOrBoolean(PartialRuleConfig),
+      TAB: ruleOrBoolean(PartialRuleConfig),
+      TRAILING_WHITESPACE: ruleOrBoolean(PartialRuleConfig),
+      MULTIPLE_FINAL_NEWLINES: ruleOrBoolean(PartialRuleConfig),
+      NO_FINAL_NEWLINE: ruleOrBoolean(PartialRuleConfig),
+      UNEXPECTED_CHARACTER: ruleOrBoolean(
+        PartialRuleConfig.extend({ allowed: z.array(z.string()).readonly() }),
       ),
-      UTF8_VALIDATION: createPartialRule(
-        RulesetConfig.extend(partialRules(createRules({
-          INVALID_BYTE: createPartialRule(RuleConfig),
-          UNEXPECTED_CONTINUATION_BYTE: createPartialRule(RuleConfig),
-          MISSING_CONTINUATION_BYTE: createPartialRule(RuleConfig),
-          OVERLONG_BYTE_SEQUENCE: createPartialRule(RuleConfig),
-          INVALID_CODE_POINT: createPartialRule(RuleConfig),
+      UTF8_VALIDATION: ruleOrBoolean(
+        PartialRulesetConfig.extend(partialRules(createRules({
+          INVALID_BYTE: ruleOrBoolean(PartialRuleConfig),
+          UNEXPECTED_CONTINUATION_BYTE: ruleOrBoolean(PartialRuleConfig),
+          MISSING_CONTINUATION_BYTE: ruleOrBoolean(PartialRuleConfig),
+          OVERLONG_BYTE_SEQUENCE: ruleOrBoolean(PartialRuleConfig),
+          INVALID_CODE_POINT: ruleOrBoolean(PartialRuleConfig),
         }))),
       ),
     }))),
