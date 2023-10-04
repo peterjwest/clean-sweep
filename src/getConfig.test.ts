@@ -159,6 +159,16 @@ describe('getConfigPath', () => {
     );
   });
 
+  test('Resolves with undefined, no default path is readable and no user config passed', async () => {
+    const currentDirectory = sinon.stub().returns('/foo/bar/zim');
+    const fileReadable = sinon.stub().resolves(false);
+
+    assert.strictEqual(
+      await getConfigPath('/foo/bar', undefined, { currentDirectory, fileReadable }),
+      undefined,
+    );
+  });
+
   test('Resolves with the user config path if passed', async () => {
     const currentDirectory = sinon.stub().returns('/foo/bar/zim');
     const fileReadable = sinon.stub().resolves(true);

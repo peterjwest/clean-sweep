@@ -90,6 +90,7 @@ export type ExtendedConfig = ExtendRuleset<Config>;
 export type ExtendedPathConfig = ExtendedConfig['rules']['PATH_VALIDATION'];
 export type ExtendedContentConfig = ExtendedConfig['rules']['CONTENT_VALIDATION'];
 export type ExtendedUtf8Config = ExtendedContentConfig['rules']['UTF8_VALIDATION'];
+export type AnyExtendedConfig = ExtendedConfig | ExtendedPathConfig | ExtendedContentConfig | ExtendedUtf8Config;
 
 function partialRules<RulesType extends z.ZodRawShape>({ rules }: { rules: z.ZodObject<RulesType> }) {
   return { rules: rules.partial().optional() };

@@ -5,6 +5,8 @@ import { createEnum } from './util';
 
 type SectionStatus = keyof typeof SECTION_STATUSES;
 
+type Task<Result> = (progress: ProgressManager) => Promise<Result>
+
 interface Section {
   name: string;
   status: SectionStatus;
@@ -32,18 +34,18 @@ const SECTION_STATUS_ICONS = {
 /** Frame delay to render progress in milliseconds */
 const FRAME_INTERVAL = 1000 / 20; // 50 ms = 1000 ms / 20 fps
 
-const SAVE_CURSOR = '\u001b7';
-const RESTORE_CURSOR = '\u001b8';
-const MOVE_CURSOR = '\u001b';
-const CLEAR_LINE = '\u001b[2K';
+export const SAVE_CURSOR = '\u001b7';
+export const RESTORE_CURSOR = '\u001b8';
+export const MOVE_CURSOR = '\u001b';
+export const CLEAR_LINE = '\u001b[2K';
 
 /** Moves the cursor up a number of lines in the terminal */
-function moveCursorUp(lines: number) {
+export function moveCursorUp(lines: number) {
   return MOVE_CURSOR + '[' + lines + 'A';
 }
 
 /** Rewrites a line in the terminal */
-function rewriteLine(stream: NodeJS.WriteStream, line: number, text: string) {
+export function rewriteLine(stream: NodeJS.WriteStream, line: number, text: string) {
   stream.write(SAVE_CURSOR);
   stream.write(moveCursorUp(line));
   stream.write(CLEAR_LINE);
@@ -52,12 +54,12 @@ function rewriteLine(stream: NodeJS.WriteStream, line: number, text: string) {
 }
 
 /** Returns a section with its current icon */
-function outputSection(section: Section) {
+export function outputSection(section: Section) {
   return `${SECTION_STATUS_ICONS[section.status]} ${chalk.grey(section.name)}\n`;
 }
 
 /** Returns a progress bar */
-function outputProgressBar({ succeeded, failed, total, message }: ProgressBar, width = 40) {
+export function outputProgressBar({ succeeded, failed, total, message }: ProgressBar, width = 40) {
   const successWidth = Math.floor(width * (succeeded / total));
   const errorWidth = Math.floor(width * (failed / total));
   // Ensure any non-zero number of errors are visible */
@@ -76,35 +78,27 @@ export default class ProgressManager {
   stream: NodeJS.WriteStream;
   sections: Section[] = [];
   progress?: ProgressBar;
+  redrawProgressThrottled;
 
   constructor(stream: NodeJS.WriteStream) {
     this.stream = stream;
     this.interactive = stream.isTTY;
+
+    /** Redraws the progress bar, throttled to the frame interval */
+    this.redrawProgressThrottled = lodash.throttle(() => {
+      if (this.progress) rewriteLine(this.stream, 1, outputProgressBar(this.progress));
+    }, FRAME_INTERVAL);
   }
 
   /** Manages terminal output for an async task */
-  static async manage<Result>(
-    stream: NodeJS.WriteStream,
-    task: (progress: ProgressManager) => Promise<Result>,
-  ): Promise<Result> {
-
-    const progress = new ProgressManager(process.stdout);
+  static async manage<Result>(stream: NodeJS.WriteStream, task: Task<Result>): Promise<Result> {
+    const progress = new ProgressManager(stream);
     try {
       return await task(progress);
     } finally {
       progress.end();
     }
   }
-
-  /** Redraws a section */
-  redrawSection(section: Section) {
-    rewriteLine(this.stream, 1 + (this.progress ? 1 : 0), outputSection(section));
-  }
-
-  /** Redraws the progress bar, throttled to the frame interval */
-  redrawProgressBar = lodash.throttle((progress: ProgressBar) => {
-    rewriteLine(this.stream, 1, outputProgressBar(progress));
-  }, FRAME_INTERVAL);
 
   /** Adds an in-progress section to be displayed with an optional progress bar */
   addSection(name: string, total?: number) {
@@ -125,12 +119,22 @@ export default class ProgressManager {
     return this.sections.length - 1;
   }
 
+  /** Redraws a section */
+  redrawSection(section: Section) {
+    rewriteLine(this.stream, 1 + (this.progress ? 1 : 0), outputSection(section));
+  }
+
+  /** Redraws the progress bar, throttled to the frame interval */
+  redrawProgressBar() {
+    this.redrawProgressThrottled();
+  }
+
   /** Increments the successes or failures of the progress bar by 1 */
   incrementProgress(success: boolean) {
     if (!this.interactive) return;
     if (!this.progress) throw new Error('No progress bar to update');
     this.progress[success ? 'succeeded' : 'failed']++;
-    this.redrawProgressBar(this.progress);
+    this.redrawProgressBar();
   }
 
   /** Updates the progress bar message */
@@ -138,7 +142,7 @@ export default class ProgressManager {
     if (!this.interactive) return;
     if (!this.progress) throw new Error('No progress bar to update');
     this.progress.message = message;
-    this.redrawProgressBar(this.progress);
+    this.redrawProgressBar();
   }
 
   /** Marks the last section as succeeded or failed, if not already complete */
@@ -167,7 +171,7 @@ export default class ProgressManager {
 
   /** Ends the final section, removes the progress bar */
   end() {
-    this.redrawProgressBar.cancel();
+    this.redrawProgressThrottled.cancel();
     this.sectionResult(true);
     this.progressBarDone();
   }

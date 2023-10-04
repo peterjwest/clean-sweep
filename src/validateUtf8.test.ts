@@ -7,6 +7,7 @@ import { extendRuleset } from './extendConfig';
 import { DEFAULT_CONFIG } from './config';
 import { FileResult } from './util';
 import validateUtf8, {
+  isValidUtf8,
   getByteType,
   getBytes,
   combineBytes,
@@ -31,7 +32,39 @@ const UTF8_CONFIG_DISABLED = extendRuleset(combineRuleset(DEFAULT_CONFIG.rules.C
 
 const UTF8_CONFIG = extendRuleset(DEFAULT_CONFIG.rules.CONTENT_VALIDATION.rules.UTF8_VALIDATION);
 
+describe('isValidUtf8', () => {
+  test('Returns true for an empty file', () => {
+    assert.deepStrictEqual(isValidUtf8(Buffer.from('')), true);
+  });
 
+  test('Returns true for a for a valid file', () => {
+    assert.deepStrictEqual(isValidUtf8(Buffer.from('abc😛あ©\r\n123😅×✓𖼄🍉\n')), true);
+  });
+
+  test('Returns false for an invalid byte', () => {
+    assert.deepStrictEqual(isValidUtf8(Buffer.from([0x31, 0xF8, 0x0D, 0xFF, 0x7E])), false);
+  });
+
+  test('Returns false for an unexpected continuation byte', () => {
+    const buffer = Buffer.from([0x31, 0x0D, 0x0A, 0x80, 0x0D, 0xBF, 0x7E]);
+    assert.deepStrictEqual(isValidUtf8(buffer), false);
+  });
+
+  test('Returns false for an overlong byte sequence', () => {
+    const buffer = Buffer.from([0x31, 0x0A, 0xC0, 0xA0, 0x0D, 0xF0, 0x80, 0x80, 0x8A]);
+    assert.deepStrictEqual(isValidUtf8(buffer), false);
+  });
+
+  test('Returns false for an invalid code point', () => {
+    const buffer = Buffer.from([0xED, 0xB0, 0x93, 0x0D, 0x0D, 0xEE, 0x82, 0x80, 0x0A, 0xF1, 0xAF, 0xBF, 0xBE]);
+    assert.deepStrictEqual(isValidUtf8(buffer), false);
+  });
+
+  test('Returns false for a missing continuation byte', () => {
+    const buffer = Buffer.from([0x0A, 0xF0, 0x9F, 0x98, 0xE3, 0x81, 0x0D, 0xC2, 0x0A, 0xF0]);
+    assert.deepStrictEqual(isValidUtf8(buffer), false);
+  });
+});
 
 describe('getByteType', () => {
   test('Returns the type for an ASCII byte', () => {

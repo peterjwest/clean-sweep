@@ -8,6 +8,8 @@ import { getLineNumber, FileResult } from './util';
 /** Runs checks on file contents */
 export default function checkContent(filePath: string, data: Buffer, config: ExtendedContentConfig): FileResult {
   const result = new FileResult();
+  if (!data.length) return result;
+
   const charset = detect(data);
 
   if (config.rules.MALFORMED_ENCODING.enabledFor(filePath)) {

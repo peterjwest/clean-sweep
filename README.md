@@ -588,7 +588,6 @@ export default {
 ## Todo:
 
 - Extend documentation
-- Tests
 - Autofixing
 - More snippets
 - Extend config

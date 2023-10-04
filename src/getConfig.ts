@@ -21,14 +21,15 @@ export async function getConfigPath(
   userConfigPath?: string,
   deps = { fileReadable, currentDirectory }
 ): Promise<string | undefined> {
-  const DEFAULT_TS_CONFIG = join(projectDir, 'unlinted.config.ts');
-  const DEFAULT_JS_CONFIG = join(projectDir, 'unlinted.config.js');
-  const DEFAULT_JSON_CONFIG = join(projectDir, 'unlinted.config.json');
+  const defaultTsConfig = join(projectDir, 'unlinted.config.ts');
+  const defaultJsConfig = join(projectDir, 'unlinted.config.js');
+  const defaultJsonConfig = join(projectDir, 'unlinted.config.json');
 
   if (userConfigPath) return resolve(deps.currentDirectory(), userConfigPath);
-  else if (await deps.fileReadable(DEFAULT_TS_CONFIG)) return DEFAULT_TS_CONFIG;
-  else if (await deps.fileReadable(DEFAULT_JS_CONFIG)) return DEFAULT_JS_CONFIG;
-  else if (await deps.fileReadable(DEFAULT_JSON_CONFIG)) return DEFAULT_JSON_CONFIG;
+  if (await deps.fileReadable(defaultTsConfig)) return defaultTsConfig;
+  if (await deps.fileReadable(defaultJsConfig)) return defaultJsConfig;
+  if (await deps.fileReadable(defaultJsonConfig)) return defaultJsonConfig;
+  return undefined;
 }
 
 /** Get full configuration, combining default with user config */

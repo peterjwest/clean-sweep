@@ -1,4 +1,4 @@
-import ignore, { Ignore } from 'ignore';
+import ignore from 'ignore';
 
 /**
  * A class to match files against gitignore rules
@@ -6,21 +6,18 @@ import ignore, { Ignore } from 'ignore';
  */
 export default class GitignoreMatcher {
   rules: readonly string[];
-  ignore: Ignore;
   constructor(rules: readonly string[]) {
     this.rules = rules;
-    this.ignore = ignore();
-    if (this.rules.length) this.ignore.add(this.rules);
   }
 
   /** Filters out ignored files from a list of file paths */
   filter(filePaths: readonly string[]): string[] {
-    return this.ignore.filter(filePaths);
+    return ignore().add(this.rules).filter(filePaths);
   }
 
   /** Returns whether a filePath is matched (not ignored) */
   matches(filePath: string): boolean {
-    return !this.ignore.ignores(filePath);
+    return !ignore().add(this.rules).ignores(filePath);
   }
 
   /** Creates a copy of this matcher with additional gitignore rules */

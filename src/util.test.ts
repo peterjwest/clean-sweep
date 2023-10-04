@@ -6,7 +6,10 @@ import assertStub from 'sinon-assert-stub';
 import { constants } from 'fs';
 import z from 'zod';
 
+import { RULES } from './rules';
+
 import {
+  mergeResults,
   createEnum,
   createEnumNumeric,
   getLineNumber,
@@ -24,7 +27,6 @@ import {
   currentDate,
   toDateString,
   differenceInSeconds,
-  getFileResult,
   getResultStats,
   FileResult,
   Results,
@@ -223,13 +225,6 @@ describe('getIgnoredCommittedFiles', () => {
   });
 });
 
-// /** Get all committed & untracked files */
-// export async function getProjectFiles(directory: string): Promise<string[]> {
-//   const deleted = await gitListFiles(directory, '--deleted --exclude-standard');
-//   const files = await gitListFiles(directory, '--cached --others --exclude-standard');
-//   return lodash.difference(files, deleted);
-// }
-
 describe('getProjectFiles', () => {
   test('Resolves with git files, but without removed files', async () => {
     const gitListFiles = sinon.stub();
@@ -286,11 +281,11 @@ describe('getFileContent', () => {
   test('Resolves with file contents', async () => {
     const readFile = sinon.stub().resolves('foo');
 
-    assert.strictEqual(await getFileContent('file.txt', { readFile }), 'foo');
-    assertStub.calledOnceWith(readFile, ['file.txt']);
+    assert.strictEqual(await getFileContent('dir/', 'file.txt', { readFile }), 'foo');
+    assertStub.calledOnceWith(readFile, ['dir/file.txt']);
   });
 
-  test('Resolves with undefined if the path is a directory', async () => {
+  test('Resolves with an empty Buffer if the path is a directory', async () => {
     const mockError = new MockSystemError(
       'EISDIR: illegal operation on a directory, read',
       'EISDIR',
@@ -299,8 +294,8 @@ describe('getFileContent', () => {
     );
     const readFile = sinon.stub().rejects(mockError);
 
-    assert.strictEqual(await getFileContent('src', { readFile }), undefined);
-    assertStub.calledOnceWith(readFile, ['src']);
+    assert.deepStrictEqual(await getFileContent('dir', 'src', { readFile }), Buffer.from(''));
+    assertStub.calledOnceWith(readFile, ['dir/src']);
   });
 
   test('Rejects if the file is not found', async () => {
@@ -312,8 +307,8 @@ describe('getFileContent', () => {
     );
     const readFile = sinon.stub().rejects(mockError);
 
-    await assert.rejects(getFileContent('fake.txt', { readFile }), mockError);
-    assertStub.calledOnceWith(readFile, ['fake.txt']);
+    await assert.rejects(getFileContent('dir/', 'fake.txt', { readFile }), mockError);
+    assertStub.calledOnceWith(readFile, ['dir/fake.txt']);
   });
 });
 
@@ -410,31 +405,6 @@ describe('FileResult', () => {
       assert.deepStrictEqual(fileResult1.mergeWith(fileResult2), expected);
     });
   });
-});
-
-describe('getFileResult', () => {
-  test('Gets an existing file result from results', () => {
-    const exampleFile = new FileResult();
-    const results: Results = {
-      'example.txt': exampleFile,
-    };
-
-    assert.strictEqual(getFileResult(results, 'example.txt'), exampleFile);
-  });
-
-  test('Gets/creates a new file result in results', () => {
-    const exampleFile = new FileResult();
-    exampleFile.addFailures([{ type: 'DS_STORE' }]);
-
-    const results: Results = {
-      'example.txt': exampleFile,
-    };
-
-    const returned = getFileResult(results, 'foo.ts');
-    assert.deepStrictEqual(returned, new FileResult());
-    assert.deepStrictEqual(results, { 'example.txt': exampleFile, 'foo.ts': new FileResult() });
-  });
-
 });
 
 describe('getResultStats', () => {
@@ -552,6 +522,29 @@ describe('getResultStats', () => {
         passed: 0,
         failed: 4,
       },
+    });
+  });
+});
+
+describe('mergeResults', () => {
+  test('Results an empty result which combines two empty results', () => {
+    assert.deepStrictEqual(mergeResults({}, {}), {});
+  });
+
+  test('Returns a result which combines two results', () => {
+    assert.deepStrictEqual(mergeResults({
+      'foo.txt': new FileResult(3, [{ type: RULES.DS_STORE }]),
+      'bar.ts': new FileResult(7, [{ type: RULES.TAB, lines: [1, 2, 3] }]),
+    }, {
+      'bar.ts': new FileResult(5, [{ type: RULES.INVALID_BYTE, value: '0xF8', line: 13 }]),
+      'zim.zip': new FileResult(9, [{ type: RULES.NO_FINAL_NEWLINE, line: 72 }]),
+    }), {
+      'foo.txt': new FileResult(3, [{ type: RULES.DS_STORE }]),
+      'bar.ts': new FileResult(12, [
+        { type: RULES.TAB, lines: [1, 2, 3] },
+        { type: RULES.INVALID_BYTE, value: '0xF8', line: 13 },
+      ]),
+      'zim.zip': new FileResult(9, [{ type: RULES.NO_FINAL_NEWLINE, line: 72 }]),
     });
   });
 });

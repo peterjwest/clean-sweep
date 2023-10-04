@@ -4,6 +4,7 @@ import childProcess from 'child_process';
 import lodash from 'lodash';
 import { fromZodError } from 'zod-validation-error';
 import z from 'zod';
+import { join } from 'path';
 
 import { Failure } from './failures';
 
@@ -105,11 +106,11 @@ export async function getProjectDir(directory: string, deps = { exec }) {
 }
 
 /** Returns the contents of a file, returns undefined if it is a directory */
-export async function getFileContent(path: string, deps = { readFile: fs.readFile }): Promise<Buffer | undefined> {
-  return deps.readFile(path).catch((error) => {
+export async function getFileContent(directory: string, file: string, deps = { readFile: fs.readFile }): Promise<Buffer> {
+  return (await deps.readFile(join(directory, file)).catch((error) => {
     if (isSystemError(error) && error.code === 'EISDIR') return undefined;
     throw error;
-  });
+  })) || Buffer.from('');
 }
 
 /** Checks if an error is a Node system error */
@@ -149,8 +150,13 @@ export class ErrorWithFailures extends Error {
 
 /** Results for a file, with helper methods */
 export class FileResult {
-  checks: number = 0;
-  failures: Failure[] = [];
+  checks: number;
+  failures: Failure[];
+
+  constructor(checks = 0, failures: Failure[] = []) {
+    this.checks = checks;
+    this.failures = failures;
+  }
 
   /** Adds a number of failures into this result */
   addFailures(failures: Failure[]) {
@@ -160,19 +166,11 @@ export class FileResult {
 
   /** Merges another result into this one */
   mergeWith(fileResult: FileResult) {
-    this.addFailures(fileResult.failures);
-    this.checks += fileResult.checks;
-    return this;
+    return new FileResult(this.checks + fileResult.checks, [...this.failures, ...fileResult.failures]);
   }
 }
 
 export type Results = Record<string, FileResult>;
-
-/** Gets or creates FileResult for a set of results */
-export function getFileResult(results: Results, filePath: string): FileResult {
-  const fileResult = results[filePath] || new FileResult();
-  return results[filePath] = fileResult;
-}
 
 export interface ResultStats {
   files: {
@@ -210,4 +208,12 @@ export function getResultStats(results: Results): ResultStats {
       failed: checksFailed,
     },
   };
+}
+
+/** Returns new Results which combines resultsA and resultsB */
+export function mergeResults(resultsA: Results, resultsB: Results): Results {
+  return { ...resultsB, ...lodash.mapValues(resultsA, (resultA, key) => {
+    const resultB = resultsB[key];
+    return resultB ? resultA.mergeWith(resultB) : resultA;
+  }) };
 }

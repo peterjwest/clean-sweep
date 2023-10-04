@@ -62,6 +62,14 @@ const OVERLONG_RANGES = [
   [0xF0808080, 0xF090807F],
 ] as const;
 
+/**
+ * Checks if UTF8 content is valid by converting it to a string and back to a buffer
+ * Any parsing errors will lead to differences in the data
+ */
+export function isValidUtf8(buffer: Buffer) {
+  return Buffer.from(buffer.toString('utf-8')).equals(buffer);
+}
+
 /** Gets the type of a UTF8 byte */
 export function getByteType(value: number): ByteType {
   if (value < 0 || value > 0xFF) throw new Error(`Invalid byte value ${serialiseBytes([value])}`);
@@ -158,6 +166,8 @@ export default async function validateUtf8(filePath: string, data: Buffer, confi
   const result = new FileResult();
   const isEnabled = lodash.mapValues(config.rules, (rule) => rule.enabledFor(filePath));
   result.checks = lodash.sumBy(Object.values(isEnabled), (value) => value ? 1 : 0);
+
+  if (isValidUtf8(data)) return result;
 
   let count = 0;
   for (let i = 0; i < data.length; i++) {
