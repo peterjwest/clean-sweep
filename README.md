@@ -1,4 +1,5 @@
-# unlinted [![npm version][npm-badge]][npm-url] [![build status][circle-badge]][circle-url] [![coverage status][coverage-badge]][coverage-url]
+# unlinted
+[![npm version][npm-badge]][npm-url] [![build status][circle-badge]][circle-url] [![coverage status][coverage-badge]][coverage-url]
 
 General purpose project-wide linting and hygiene.
 
