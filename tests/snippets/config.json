@@ -1,3 +1,6 @@
 {
-  "bash": { "command": ["bash"], "extension": "sh" }
+  "bash": { "command": ["bash"], "extension": "sh" },
+  "config-default-js": { "command": ["./src/checkDefaultConfig.ts"], "extension": "js" },
+  "config-js": { "command": ["./src/checkConfig.ts"], "extension": "js" },
+  "config-ts": { "command": ["./src/checkConfig.ts"], "extension": "ts" }
 }
