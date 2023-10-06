@@ -1,6 +1,6 @@
 {
   "name": "unlinted",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "General purpose project-wide linting and hygiene",
   "type": "module",
   "main": "./build/code/index.js",
