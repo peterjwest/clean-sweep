@@ -625,7 +625,6 @@ export default {
 ## Todo:
 
 - Autofixing
-- Extend config
 - Carriage return allow windows
 
 [npm-badge]: https://badge.fury.io/js/unlinted.svg

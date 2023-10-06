@@ -39,6 +39,8 @@ const LEADING_BYTE_OFFSETS = {
   4: 0xF0,
 } as const;
 
+const CONTINUATION_BYTE_OFFSET = 0x80;
+
 /** Various invalid code point ranges for normal files */
 const INVALID_CODE_POINT_RANGES: Array<[number, number]> = [
   // Private-use characters
@@ -102,7 +104,7 @@ export function combineBytes(bytes: ByteSequence): number {
 export function getCodePoint(bytes: ByteSequence) {
   let value = bytes[0] - LEADING_BYTE_OFFSETS[bytes.length];
   for (const byte of bytes.slice(1)) {
-    value = (value * 64) + byte - 0x80;
+    value = (value * 64) + byte - CONTINUATION_BYTE_OFFSET;
   }
   return value;
 }

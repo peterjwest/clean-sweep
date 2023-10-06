@@ -59,6 +59,7 @@ export default async function unlinted(
   });
 
   progress.addSection(`Git project directory: ${projectDir}`);
+  progress.addSection(`Directory to analyse: ${resolve(deps.cwd(), directory)}`);
 
   const [plainConfig, configPath] = await deps.getConfig(projectDir, userConfigPath);
   const config = deps.extendConfig(plainConfig);

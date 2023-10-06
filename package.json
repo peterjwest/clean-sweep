@@ -33,7 +33,7 @@
   "scripts": {
     "build": "rm -rf build/code && tsup src/index.ts src/unlinted.ts --format cjs,esm --dts --out-dir build/code",
     "lint:ts": "eslint .",
-    "lint:unlinted": " tsx src/unlinted.ts",
+    "lint:unlinted": "tsx src/unlinted.ts",
     "test:coverage": "vitest run --coverage",
     "test:unit": "vitest run",
     "test:snippets": "npx test-snippets",

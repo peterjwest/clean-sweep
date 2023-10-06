@@ -61,7 +61,7 @@ describe('unlinted', () => {
     const sectionFailed = sinon.stub();
     const progress = { addSection, incrementProgress, progressBarMessage, sectionFailed } as unknown as ProgressManager;
 
-    const getProjectDir = sinon.stub().resolves('path/dir');
+    const getProjectDir = sinon.stub().resolves('/path/dir');
     const getConfig = sinon.stub().resolves([DEFAULT_CONFIG, 'unlinted.config.ts']);
     const getProjectFiles = sinon.stub().resolves(['foo.txt', 'bar.ts', 'zim.md']);
     const getIgnoredCommittedFiles = sinon.stub().resolves([]);
@@ -84,7 +84,7 @@ describe('unlinted', () => {
       checkFilePath,
       checkContent,
       extendConfig,
-      cwd: () => '/absolute/dir',
+      cwd: () => '/path/dir',
     });
 
     assert.deepStrictEqual(results, {
@@ -93,14 +93,14 @@ describe('unlinted', () => {
       'zim.md': new FileResult(12),
     });
 
-    assertStub.calledWith(getConfig, [['path/dir', undefined]]);
+    assertStub.calledWith(getConfig, [['/path/dir', undefined]]);
     assertStub.calledWith(getFileContent, [
-      ['path/dir', 'foo.txt'],
-      ['path/dir', 'bar.ts'],
-      ['path/dir', 'zim.md'],
-      ['path/dir', 'foo.txt'],
-      ['path/dir', 'bar.ts'],
-      ['path/dir', 'zim.md'],
+      ['/path/dir', 'foo.txt'],
+      ['/path/dir', 'bar.ts'],
+      ['/path/dir', 'zim.md'],
+      ['/path/dir', 'foo.txt'],
+      ['/path/dir', 'bar.ts'],
+      ['/path/dir', 'zim.md'],
     ]);
     assertStub.calledWith(checkFilePath, [
       ['foo.txt', config.rules.PATH_VALIDATION],
@@ -119,7 +119,58 @@ describe('unlinted', () => {
     ]);
 
     assertStub.calledWith(addSection, [
-      ['Git project directory: path/dir'],
+      ['Git project directory: /path/dir'],
+      ['Directory to analyse: /path/dir'],
+      ['Using config file: unlinted.config.ts'],
+      ['Loading project file list'],
+      ['Checking file paths', 3],
+      ['Checking file contents', 3],
+      ['Checking UTF8 encoding', 3],
+    ]);
+  });
+
+  test('Returns results with no failures with a custom path', async () => {
+    const addSection = sinon.stub();
+    const incrementProgress = sinon.stub();
+    const progressBarMessage = sinon.stub();
+    const sectionFailed = sinon.stub();
+    const progress = { addSection, incrementProgress, progressBarMessage, sectionFailed } as unknown as ProgressManager;
+
+    const getProjectDir = sinon.stub().resolves('/path/dir');
+    const getConfig = sinon.stub().resolves([DEFAULT_CONFIG, 'unlinted.config.ts']);
+    const getProjectFiles = sinon.stub().resolves(['foo.txt', 'bar.ts', 'zim.md']);
+    const getIgnoredCommittedFiles = sinon.stub().resolves([]);
+    const getFileContent = sinon.stub().resolves(Buffer.from('Example content'));
+    const checkIgnoredCommitted = sinon.stub().resolves();
+    const checkFilePath = sinon.stub().resolves(new FileResult(3));
+    const checkContent = sinon.stub().resolves(new FileResult(4));
+    const validateUtf8 = sinon.stub().resolves(new FileResult(5));
+
+    const results = await unlinted(progress, './src', undefined, {
+      getProjectDir,
+      getConfig,
+      getProjectFiles,
+      getIgnoredCommittedFiles,
+      getFileContent,
+      validateUtf8,
+      checkIgnoredCommitted,
+      checkFilePath,
+      checkContent,
+      extendConfig,
+      cwd: () => '/path/dir',
+    });
+
+    assert.deepStrictEqual(results, {
+      'foo.txt': new FileResult(12),
+      'bar.ts': new FileResult(12),
+      'zim.md': new FileResult(12),
+    });
+
+    assertStub.calledWith(getConfig, [['/path/dir', undefined]]);
+
+    assertStub.calledWith(addSection, [
+      ['Git project directory: /path/dir'],
+      ['Directory to analyse: /path/dir/src'],
       ['Using config file: unlinted.config.ts'],
       ['Loading project file list'],
       ['Checking file paths', 3],
@@ -135,7 +186,7 @@ describe('unlinted', () => {
     const sectionFailed = sinon.stub();
     const progress = { addSection, incrementProgress, progressBarMessage, sectionFailed } as unknown as ProgressManager;
 
-    const getProjectDir = sinon.stub().resolves('path/dir');
+    const getProjectDir = sinon.stub().resolves('/path/dir');
     const getConfig = sinon.stub().resolves([{ ...DEFAULT_CONFIG, enabled: false }, 'unlinted.config.ts']);
     const getProjectFiles = sinon.stub().resolves(['foo.txt', 'bar.ts', 'zim.md']);
     const getIgnoredCommittedFiles = sinon.stub().resolves([]);
@@ -156,12 +207,12 @@ describe('unlinted', () => {
       checkFilePath,
       checkContent,
       extendConfig,
-      cwd: () => '/absolute/dir',
+      cwd: () => '/path/dir',
     });
 
     assert.deepStrictEqual(results, {});
 
-    assertStub.calledWith(getConfig, [['path/dir', undefined]]);
+    assertStub.calledWith(getConfig, [['/path/dir', undefined]]);
 
     assertStub.notCalled(getFileContent);
     assertStub.notCalled(checkFilePath);
@@ -169,7 +220,8 @@ describe('unlinted', () => {
     assertStub.notCalled(validateUtf8);
 
     assertStub.calledWith(addSection, [
-      ['Git project directory: path/dir'],
+      ['Git project directory: /path/dir'],
+      ['Directory to analyse: /path/dir'],
       ['Using config file: unlinted.config.ts'],
       ['All checks disabled, exiting'],
     ]);
@@ -182,7 +234,7 @@ describe('unlinted', () => {
     const sectionFailed = sinon.stub();
     const progress = { addSection, incrementProgress, progressBarMessage, sectionFailed } as unknown as ProgressManager;
 
-    const getProjectDir = sinon.stub().resolves('path/dir');
+    const getProjectDir = sinon.stub().resolves('/path/dir');
     const getConfig = sinon.stub().resolves([DEFAULT_CONFIG, undefined]);
     const getProjectFiles = sinon.stub().resolves(['foo.txt', 'bar.ts', 'zim.md']);
     const getIgnoredCommittedFiles = sinon.stub().resolves([]);
@@ -203,7 +255,7 @@ describe('unlinted', () => {
       checkFilePath,
       checkContent,
       extendConfig,
-      cwd: () => '/absolute/dir',
+      cwd: () => '/path/dir',
     });
 
     assert.deepStrictEqual(results,  {
@@ -213,7 +265,8 @@ describe('unlinted', () => {
     });
 
     assertStub.calledWith(addSection, [
-      ['Git project directory: path/dir'],
+      ['Git project directory: /path/dir'],
+      ['Directory to analyse: /path/dir'],
       ['Using default config'],
       ['Loading project file list'],
       ['Checking file paths', 3],
@@ -229,7 +282,7 @@ describe('unlinted', () => {
     const sectionFailed = sinon.stub();
     const progress = { addSection, incrementProgress, progressBarMessage, sectionFailed } as unknown as ProgressManager;
 
-    const getProjectDir = sinon.stub().resolves('path/dir');
+    const getProjectDir = sinon.stub().resolves('/path/dir');
     const getConfig = sinon.stub().resolves([DEFAULT_CONFIG, 'unlinted.config.ts']);
     const getProjectFiles = sinon.stub().resolves(['foo.txt', 'bar.ts', 'zim.md']);
     const getIgnoredCommittedFiles = sinon.stub().resolves([]);
@@ -271,7 +324,7 @@ describe('unlinted', () => {
       checkFilePath,
       checkContent,
       extendConfig,
-      cwd: () => '/absolute/dir',
+      cwd: () => '/path/dir',
     });
 
     assert.deepStrictEqual(results,  {
@@ -285,14 +338,14 @@ describe('unlinted', () => {
       ]),
     });
 
-    assertStub.calledWith(getConfig, [['path/dir', undefined]]);
+    assertStub.calledWith(getConfig, [['/path/dir', undefined]]);
     assertStub.calledWith(getFileContent, [
-      ['path/dir', 'foo.txt'],
-      ['path/dir', 'bar.ts'],
-      ['path/dir', 'zim.md'],
-      ['path/dir', 'foo.txt'],
-      ['path/dir', 'bar.ts'],
-      ['path/dir', 'zim.md'],
+      ['/path/dir', 'foo.txt'],
+      ['/path/dir', 'bar.ts'],
+      ['/path/dir', 'zim.md'],
+      ['/path/dir', 'foo.txt'],
+      ['/path/dir', 'bar.ts'],
+      ['/path/dir', 'zim.md'],
     ]);
     assertStub.calledWith(checkFilePath, [
       ['foo.txt', config.rules.PATH_VALIDATION],
@@ -311,7 +364,8 @@ describe('unlinted', () => {
     ]);
 
     assertStub.calledWith(addSection, [
-      ['Git project directory: path/dir'],
+      ['Git project directory: /path/dir'],
+      ['Directory to analyse: /path/dir'],
       ['Using config file: unlinted.config.ts'],
       ['Loading project file list'],
       ['Checking file paths', 3],
@@ -348,8 +402,8 @@ describe('unlinted', () => {
       checkFilePath,
       checkContent,
       extendConfig,
-      cwd: () => '/absolute/dir',
-    }), new Error('The directory /absolute/dir is not a git project'));
+      cwd: () => '/path/dir',
+    }), new Error('The directory /path/dir is not a git project'));
 
     assertStub.notCalled(getConfig);
     assertStub.notCalled(getFileContent);
