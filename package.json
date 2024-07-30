@@ -37,7 +37,8 @@
     "test:coverage": "vitest run --coverage",
     "test:unit": "vitest run",
     "test:snippets": "npx test-snippets",
-    "preinstall": "npx only-allow pnpm"
+    "preinstall": "npx only-allow pnpm",
+    "prepublish": "pnpm install && pnpm build"
   },
   "dependencies": {
     "chalk": "^5.3.0",
