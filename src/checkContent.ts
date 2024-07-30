@@ -53,7 +53,7 @@ export default function checkContent(filePath: string, data: Buffer, config: Ext
       result.addFailures(Array.from(carriageReturn).map((match) => {
         return {
           type: RULES.CARRIAGE_RETURN,
-          line: getLineNumber(content, match.index as number),
+          line: getLineNumber(content, match.index),
         };
       }));
     }
@@ -66,7 +66,7 @@ export default function checkContent(filePath: string, data: Buffer, config: Ext
     if (tabs.length) {
       result.failures.push({
         type: RULES.TAB,
-        lines: tabs.map((match) => getLineNumber(content, match.index as number)),
+        lines: tabs.map((match) => getLineNumber(content, match.index)),
       });
     }
   }
@@ -78,7 +78,7 @@ export default function checkContent(filePath: string, data: Buffer, config: Ext
     if (trailingWhitespace.length) {
       result.failures.push({
         type: RULES.TRAILING_WHITESPACE,
-        lines: trailingWhitespace.map((match) => getLineNumber(content, match.index as number)),
+        lines: trailingWhitespace.map((match) => getLineNumber(content, match.index)),
       });
     }
   }
@@ -122,7 +122,7 @@ export default function checkContent(filePath: string, data: Buffer, config: Ext
       result.addFailures(groupedMatches.map((matches) => ({
         type: RULES.UNEXPECTED_CHARACTER,
         value: matches[0]![0],
-        lines: matches.map((match) => getLineNumber(content, match.index as number)),
+        lines: matches.map((match) => getLineNumber(content, match.index)),
       })));
     }
   }
