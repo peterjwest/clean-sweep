@@ -82,8 +82,12 @@ commands:
           name: Lint all files
           command: pnpm lint:unlinted
       - run:
+          name: Check for missing or unusued dependencies
+          command: pnpm lint:dependencies
+      - run:
           name: Audit production dependencies
           command: pnpm audit --prod
+
 
   build:
     steps:
