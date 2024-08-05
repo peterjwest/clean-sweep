@@ -66,11 +66,11 @@ export function exitProcess(code?: number, deps = { process }) {
  * Wrapper function for import, makes dependency injection simpler.
  * This function is excluded from coverage because mocking `import` is painful
  */
-/* c8 ignore start */
+/* v8 ignore start */
 export async function importModule(path: string): Promise<unknown> {
   return import(path);
 }
-/* c8 ignore end */
+/* v8 ignore end */
 
 /** Return an array of (slightly) more user friendly errors from ZodError */
 export function getZodErrors(error: z.ZodError) {
