@@ -16,7 +16,7 @@ describe('reportResults', () => {
 
     const results: Results = {};
 
-    reportResults(results, getResultStats(results), startedAt, { log, currentDate }),
+    reportResults(results, getResultStats(results), startedAt, { log, currentDate });
     assertStub.calledWith(log, [
       [''],
       [chalk.inverse.bold.green(' Success ')],
@@ -46,7 +46,7 @@ describe('reportResults', () => {
       bar,
     };
 
-    reportResults(results, getResultStats(results), startedAt, { log, currentDate }),
+    reportResults(results, getResultStats(results), startedAt, { log, currentDate });
     assertStub.calledWith(log, [
       [''],
       [chalk.inverse.bold.green(' Success ')],
@@ -107,7 +107,7 @@ describe('reportResults', () => {
       'docs/zim.md': zim,
     };
 
-    reportResults(results, getResultStats(results), startedAt, { log, currentDate }),
+    reportResults(results, getResultStats(results), startedAt, { log, currentDate });
     assertStub.calledWith(log, [
       [''],
       [chalk.red.bold('×'), 'foo.TXT'],
